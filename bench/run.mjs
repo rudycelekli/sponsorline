@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import {
   buildInterestVector, runAuction, deriveDeviceKey, createConsent,
-  makeImpression, verifyLog, Ledger, reconcile, chainHash,
+  makeImpression, verifyLog, validateConsent, revokeConsent, Ledger, reconcile, chainHash,
 } from "@sponsorline/core";
 import { naivePick } from "./baselines/naive/baseline.mjs";
 
@@ -49,18 +49,29 @@ for (let i = 0; i < RENDERS; i++) {
 const replay = verifyLog(log, { publicKeyHex: key.publicKeyHex, consent });
 const reproPct = replay.ok ? 100 : 0;
 
-// Invalid-consent fault suite (5 cases) → all must be gated.
+// Invalid-consent fault suite (5 cases) → each must be gated to the plain line.
+// "Gated" is decided by the SAME primitive the statusline producer uses:
+// a missing consent record (null-guard) or validateConsent() returning invalid.
 const faults = ["missing", "expired", "tampered", "revoked", "wrong-key"];
 let gated = 0;
 for (const f of faults) {
-  let blocked = false;
-  try {
-    if (f === "missing") blocked = true;
-    else if (f === "expired") blocked = (createConsent({ grantedSignals: ["lang"], key, now: 0, ttlMs: 1 }).payload.expiresAt <= 1000);
-    else if (f === "tampered") { const c = { ...consent, payload: { ...consent.payload, grantedSignals: ["code"] } }; blocked = !verifyLog([], { publicKeyHex: key.publicKeyHex }).ok || true; }
-    else blocked = true;
-  } catch { blocked = true; }
-  if (blocked) gated++;
+  let showsAd; // true == an ad would render (a gate FAILURE); we want every fault gated
+  if (f === "missing") {
+    showsAd = false; // no consent record → producer's `if (!consent) return plainLine`
+  } else if (f === "expired") {
+    const c = createConsent({ grantedSignals: ["lang"], key, now: 0, ttlMs: 1 });
+    showsAd = validateConsent(c, { publicKeyHex: key.publicKeyHex, now: 1000 }).valid;
+  } else if (f === "revoked") {
+    const c = revokeConsent(consent, key, 10);
+    showsAd = validateConsent(c, { publicKeyHex: key.publicKeyHex, now: 20 }).valid;
+  } else if (f === "tampered") {
+    const c = { ...consent, payload: { ...consent.payload, grantedSignals: ["code"] } }; // mutated, NOT re-sealed
+    showsAd = validateConsent(c, { publicKeyHex: key.publicKeyHex, now: 1 }).valid;
+  } else { // wrong-key: a different device's public key cannot validate this seal
+    const other = deriveDeviceKey("attacker-salt");
+    showsAd = validateConsent(consent, { publicKeyHex: other.publicKeyHex, now: 1 }).valid;
+  }
+  if (!showsAd) gated++;
 }
 const gatePct = (gated / faults.length) * 100;
 
