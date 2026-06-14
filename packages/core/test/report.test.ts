@@ -60,6 +60,33 @@ describe("aggregateReceipts", () => {
     expect(report.campaigns).toEqual([]);
     expect(report.acceptedReceipts).toBe(0);
     expect(report.flaggedReceipts).toBe(0);
+    expect(report.suppressedCampaigns).toBe(0);
+  });
+
+  it("applies no supply floor by default (suppressedCampaigns is 0)", () => {
+    const d1 = deviceReceipt("dev-1", [[["lang:ts"], 100]]).receipt;
+    const report = aggregateReceipts([d1]);
+    expect(report.campaigns.find((c) => c.campaignId === "acme-ci")!.reachDevices).toBe(1);
+    expect(report.suppressedCampaigns).toBe(0);
+  });
+
+  it("withholds a campaign below the k-anon supply floor instead of paying against thin reach", () => {
+    // Two distinct devices reach acme-ci; a floor of 3 must withhold it.
+    const d1 = deviceReceipt("dev-1", [[["lang:ts"], 100]]).receipt;
+    const d2 = deviceReceipt("dev-2", [[["lang:ts"], 150]]).receipt;
+    const report = aggregateReceipts([d1, d2], undefined, { minReachDevices: 3 });
+    expect(report.campaigns.find((c) => c.campaignId === "acme-ci")).toBeUndefined();
+    expect(report.suppressedCampaigns).toBe(1);
+    // The receipts were still accepted and verified — only the thin rollup is withheld.
+    expect(report.acceptedReceipts).toBe(2);
+  });
+
+  it("surfaces a campaign once it meets the supply floor", () => {
+    const d1 = deviceReceipt("dev-1", [[["lang:ts"], 100]]).receipt;
+    const d2 = deviceReceipt("dev-2", [[["lang:ts"], 150]]).receipt;
+    const report = aggregateReceipts([d1, d2], undefined, { minReachDevices: 2 });
+    expect(report.campaigns.find((c) => c.campaignId === "acme-ci")!.reachDevices).toBe(2);
+    expect(report.suppressedCampaigns).toBe(0);
   });
 
   it("with a policy, flags an implausible-but-validly-sealed receipt and keeps it out of the reach numbers", () => {

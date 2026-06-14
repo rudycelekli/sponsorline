@@ -13,6 +13,13 @@ import { screenReceipts, type AntiFraudPolicy } from "./antifraud.js";
 // out of the numbers a marketer pays against. The count of withheld receipts is
 // surfaced as flaggedReceipts so the screening is auditable, never silent.
 
+// k-anonymity / supply floor. Below this many distinct contributing devices a
+// per-campaign "reach" number is both deanonymizing (it can point at a near-unique
+// device population) and statistically meaningless. It is the same floor the DP
+// engine enforces for aggregate release; the marketer reach report uses it so a
+// cold-start campaign with thin inventory can never be presented as a deliverable.
+export const SUPPLY_FLOOR_DEVICES = 200;
+
 export interface CampaignReport {
   campaignId: string;
   reachDevices: number; // distinct device public keys that showed this campaign
@@ -27,6 +34,15 @@ export interface MarketerReport {
   acceptedReceipts: number;
   rejectedReceipts: number; // failed the seal check (tampered / forged)
   flaggedReceipts: number; // sealed but withheld by anti-fraud screening (0 when no policy)
+  suppressedCampaigns: number; // withheld for not meeting the k-anon supply floor (0 when no floor)
+}
+
+export interface ReportOptions {
+  // Minimum distinct devices a campaign must reach before it appears in a report.
+  // A campaign below this floor is withheld from `campaigns` and counted in
+  // `suppressedCampaigns` instead, so thin/empty inventory can never be paid against.
+  // Default 0 = no floor; the platform boundary sets the real floor (SUPPLY_FLOOR_DEVICES).
+  minReachDevices?: number;
 }
 
 interface Accum {
@@ -37,7 +53,11 @@ interface Accum {
   lastTs: number;
 }
 
-export function aggregateReceipts(receipts: Receipt[], policy?: AntiFraudPolicy): MarketerReport {
+export function aggregateReceipts(
+  receipts: Receipt[],
+  policy?: AntiFraudPolicy,
+  opts: ReportOptions = {},
+): MarketerReport {
   // Optional anti-fraud gate: withhold implausible receipts before they can influence
   // reach or spend. We keep two failure modes distinct: a broken/forged seal is a
   // REJECT (counted below in the aggregation loop, so the numbers match the no-policy
@@ -93,7 +113,7 @@ export function aggregateReceipts(receipts: Receipt[], policy?: AntiFraudPolicy)
     }
   }
 
-  const campaigns: CampaignReport[] = [...byCampaign.entries()]
+  const allCampaigns: CampaignReport[] = [...byCampaign.entries()]
     .map(([campaignId, a]) => ({
       campaignId,
       reachDevices: a.devices.size,
@@ -104,5 +124,17 @@ export function aggregateReceipts(receipts: Receipt[], policy?: AntiFraudPolicy)
     }))
     .sort((x, y) => (x.campaignId < y.campaignId ? -1 : 1));
 
-  return { campaigns, acceptedReceipts: accepted, rejectedReceipts: rejected, flaggedReceipts: flagged };
+  // k-anon supply floor: a campaign that did not reach enough distinct devices is
+  // withheld (not paid against) and counted, never presented as a thin "result".
+  const floor = opts.minReachDevices ?? 0;
+  const campaigns = allCampaigns.filter((c) => c.reachDevices >= floor);
+  const suppressedCampaigns = allCampaigns.length - campaigns.length;
+
+  return {
+    campaigns,
+    acceptedReceipts: accepted,
+    rejectedReceipts: rejected,
+    flaggedReceipts: flagged,
+    suppressedCampaigns,
+  };
 }

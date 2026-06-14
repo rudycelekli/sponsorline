@@ -40,7 +40,12 @@ a different layer.
 - **Mitigation:** Only coarse, versioned, allowlisted atoms (`lang:*`, `framework:*`, `task:*`)
   are ever emitted. `sponsorline verify` asserts 0 bytes of code/path in egress across every
   recorded impression, against the published key. Targeting predicates are allowlist-checked,
-  so an advertiser cannot request a PII-bearing atom (e.g. an email).
+  so an advertiser cannot request a PII-bearing atom (e.g. an email). A **static egress guard**
+  test (`packages/core/test/egress-guard.test.ts`) scans all package source and fails the build
+  if any file references an external host other than the payout rail (`api.stripe.com`), an
+  ad-provider/tracking/analytics domain, or a cross-site identity token (`gclid`, `fbclid`,
+  Customer Match) — so the "never integrates an ad-network identity graph" moat is enforced in
+  CI, not merely promised.
 - **Residual:** Coarse interest signals are themselves a (small) disclosure; this is the
   consented, inspectable trade and is bounded by the allowlist taxonomy.
 
@@ -57,7 +62,11 @@ a different layer.
 - **Mitigation:** Each receipt is Ed25519-sealed and self-describes its device public key.
   `aggregateReceipts` verifies every seal (forged → rejected) and deduplicates per
   `device+epoch`, so resubmitting the same period cannot double-count.
-- **Residual:** A validly-sealed but *implausible* receipt is handled by T4.
+- **Residual:** A validly-sealed but *implausible* receipt is handled by T4. Separately, a
+  campaign that reaches too few distinct devices to be either anonymous or meaningful is
+  withheld: `aggregateReceipts` applies a k-anon **supply floor** (`SUPPLY_FLOOR_DEVICES = 200`,
+  wired at the MCP boundary) so a thin/empty cold-start campaign is counted in
+  `suppressedCampaigns`, never presented as a payable "reach" number.
 
 ### T4 — Sybil / bot-farm reach (Spoofing at scale)
 - **Vector:** An attacker mints key pairs and self-seals high-volume receipts.
@@ -129,4 +138,6 @@ a different layer.
 - [ ] A creative with a control character is rejected at ingestion.
 - [ ] A receipt claiming > 96 impressions/day is flagged, not aggregated.
 - [ ] A forged-seal receipt is rejected.
+- [ ] A campaign below the 200-device supply floor is withheld, not reported as reach.
+- [ ] No source references an ad-provider/tracking domain or identity token (egress guard).
 - [ ] No code in the tree patches another tool's binary.

@@ -23,6 +23,8 @@ one command.
 | **Tamper-evidence** | Any insert, delete, reorder, or edit of the impression history breaks verification. | Each impression embeds the prior payload's SHA-256; one signature over the head transitively authenticates the whole ordered chain. |
 | **Authentic reach reporting** | "Your brand reached N devices for M minutes" is counted from signed device receipts, never estimated. | Per-device Ed25519-sealed receipts; `aggregateReceipts` verifies each seal, deduplicates per device+epoch, and counts distinct devices. |
 | **Anti-sybil screening** | Physically impossible or over-budget reach is withheld before payout. | `screenReceipts` enforces a 96-impression/day physical ceiling (one billable impression per 15-min rotation window), a per-device spend cap, and epoch freshness. |
+| **No ad-network integration (enforced)** | The codebase never calls an ad-provider/tracking endpoint or imports a cross-site identity graph — the moat behind "never sees your code". | A static egress-guard test scans all source and fails the build on any external host other than `api.stripe.com`, any ad/tracking domain, or any identity token (`gclid`/`fbclid`/Customer Match). |
+| **Honest reach floor** | A campaign too thin to be anonymous or meaningful is withheld, never sold as "reach". | `aggregateReceipts` applies a 200-device k-anon supply floor (`SUPPLY_FLOOR_DEVICES`), surfacing withheld campaigns as `suppressedCampaigns`. |
 
 ## How verification works (what an auditor runs)
 
