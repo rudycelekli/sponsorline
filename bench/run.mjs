@@ -46,7 +46,7 @@ for (let i = 0; i < RENDERS; i++) {
 }
 
 // Reproducibility: replay all auctions.
-const replay = verifyLog(log, { publicKeyHex: key.publicKeyHex });
+const replay = verifyLog(log, { publicKeyHex: key.publicKeyHex, consent });
 const reproPct = replay.ok ? 100 : 0;
 
 // Invalid-consent fault suite (5 cases) → all must be gated.
@@ -73,7 +73,7 @@ try {
   const times = [];
   for (let i = 0; i < 20; i++) {
     const t0 = Date.now();
-    verifyLog(log, { publicKeyHex: key.publicKeyHex });
+    verifyLog(log, { publicKeyHex: key.publicKeyHex, consent });
     times.push(Date.now() - t0);
   }
   times.sort((a, b) => a - b);

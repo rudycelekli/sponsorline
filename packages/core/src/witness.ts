@@ -1,6 +1,7 @@
 import { runAuction, type Bidder } from "./auction.js";
 import { seal, verifySeal, chainHash, type DeviceKey, type Sealed } from "./crypto.js";
 import { isAllowlisted } from "./interest.js";
+import type { ConsentRecord } from "./consent.js";
 
 export interface ImpressionPayload {
   v: 1;
@@ -54,13 +55,31 @@ export function makeImpression(input: MakeImpressionInput): Impression {
 
 export interface VerifyOpts {
   publicKeyHex: string;
+  // When provided, every impression is bound to this consent: its consentId must
+  // match, its signal families must be within the granted set, and its timestamp
+  // must fall inside the consent's validity window (respecting revocation). The
+  // caller is responsible for having validated the consent record's own seal.
+  consent?: ConsentRecord;
 }
 
 export interface VerifyResult {
   ok: boolean;
   replayedAuctions: number;
-  reason?: "seal-invalid" | "privacy-violation" | "replay-mismatch" | "chain-broken";
+  reason?:
+    | "seal-invalid"
+    | "privacy-violation"
+    | "replay-mismatch"
+    | "chain-broken"
+    | "consent-mismatch"
+    | "consent-scope"
+    | "consent-window";
   failedIndex?: number;
+}
+
+// The signal family is the allowlisted prefix before ":" — e.g. "lang:ts" → "lang".
+function signalFamily(signal: string): string {
+  const i = signal.indexOf(":");
+  return i === -1 ? signal : signal.slice(0, i);
 }
 
 // Verification cost is O(n) cheap hashing + replay plus exactly ONE Ed25519 check
@@ -88,6 +107,26 @@ export function verifyLog(log: Impression[], opts: VerifyOpts): VerifyResult {
     for (const s of entry.payload.signals) {
       if (!isAllowlisted(s)) {
         return { ok: false, replayedAuctions: replayed, reason: "privacy-violation", failedIndex: i };
+      }
+    }
+    // Consent binding: an impression is only legitimate if it stays within the
+    // signed consent that authorized it — same id, granted families only, and
+    // logged inside the live validity window. This makes "off" (revoke) and the
+    // granted-scope promise verifiable, not just declarative.
+    if (opts.consent) {
+      const c = opts.consent.payload;
+      if (entry.payload.consentId !== c.id) {
+        return { ok: false, replayedAuctions: replayed, reason: "consent-mismatch", failedIndex: i };
+      }
+      for (const s of entry.payload.signals) {
+        if (!c.grantedSignals.includes(signalFamily(s))) {
+          return { ok: false, replayedAuctions: replayed, reason: "consent-scope", failedIndex: i };
+        }
+      }
+      const ts = entry.payload.ts;
+      const revokedCut = c.revokedAt !== null ? c.revokedAt : Infinity;
+      if (ts < c.issuedAt || ts >= c.expiresAt || ts >= revokedCut) {
+        return { ok: false, replayedAuctions: replayed, reason: "consent-window", failedIndex: i };
       }
     }
     // Intrinsic replay: re-run the auction from the SEALED snapshot, never from the

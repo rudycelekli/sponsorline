@@ -19,11 +19,13 @@ beforeEach(() => {
   const key = deriveDeviceKey(SALT);
   const store = new Store(appdir);
   store.writePubKey(key.publicKeyHex);
-  store.writeConsent(createConsent({ grantedSignals: ["lang"], key, now: 0, ttlMs: 1e12 }));
+  const consent = createConsent({ grantedSignals: ["lang"], key, now: 0, ttlMs: 1e12 });
+  store.writeConsent(consent);
   store.writeInventory(inv);
+  const cid = consent.payload.id;
   // Append as the real statusline path does: each entry chains off the current head.
-  store.appendWitness(makeImpression({ bidders: inv, signals: ["lang:ts"], seed: 1n, reserveCents: 100, consentId: "c", key, now: 1, prevHash: store.readWitnessTailHash() }));
-  store.appendWitness(makeImpression({ bidders: inv, signals: ["lang:ts"], seed: 2n, reserveCents: 100, consentId: "c", key, now: 2, prevHash: store.readWitnessTailHash() }));
+  store.appendWitness(makeImpression({ bidders: inv, signals: ["lang:ts"], seed: 1n, reserveCents: 100, consentId: cid, key, now: 1, prevHash: store.readWitnessTailHash() }));
+  store.appendWitness(makeImpression({ bidders: inv, signals: ["lang:ts"], seed: 2n, reserveCents: 100, consentId: cid, key, now: 2, prevHash: store.readWitnessTailHash() }));
 });
 
 describe("verify", () => {

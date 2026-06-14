@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { deriveDeviceKey, seal, chainHash } from "../src/crypto.js";
 import { makeImpression, verifyLog } from "../src/witness.js";
+import { createConsent, revokeConsent } from "../src/consent.js";
 import type { Bidder } from "../src/auction.js";
 
 const key = deriveDeviceKey("salt-witness");
@@ -119,5 +120,49 @@ describe("witness log", () => {
     const r = verifyLog([i0, i2], { publicKeyHex: key.publicKeyHex });
     expect(r.ok).toBe(false);
     expect(r.reason).toBe("chain-broken");
+  });
+});
+
+describe("consent binding", () => {
+  it("verifies when every impression is within the consent's scope and window", () => {
+    const consent = createConsent({ grantedSignals: ["lang"], key, now: 0, ttlMs: 1_000_000 });
+    const imp = makeImpression({
+      bidders, signals: ["lang:ts"], seed: 1n, reserveCents: 100, consentId: consent.payload.id, key, now: 10,
+    });
+    const r = verifyLog([imp], { publicKeyHex: key.publicKeyHex, consent });
+    expect(r.ok).toBe(true);
+    expect(r.replayedAuctions).toBe(1);
+  });
+
+  it("rejects an impression whose signal family is outside the consent grant", () => {
+    const consent = createConsent({ grantedSignals: ["lang"], key, now: 0, ttlMs: 1_000_000 });
+    // framework:* is allowlisted but NOT granted by a lang-only consent.
+    const imp = makeImpression({
+      bidders, signals: ["lang:ts", "framework:react"], seed: 1n, reserveCents: 100, consentId: consent.payload.id, key, now: 10,
+    });
+    const r = verifyLog([imp], { publicKeyHex: key.publicKeyHex, consent });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("consent-scope");
+  });
+
+  it("rejects an impression logged after the consent was revoked", () => {
+    const consent = createConsent({ grantedSignals: ["lang"], key, now: 0, ttlMs: 1_000_000 });
+    const revoked = revokeConsent(consent, key, 5);
+    const imp = makeImpression({
+      bidders, signals: ["lang:ts"], seed: 1n, reserveCents: 100, consentId: revoked.payload.id, key, now: 10,
+    });
+    const r = verifyLog([imp], { publicKeyHex: key.publicKeyHex, consent: revoked });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("consent-window");
+  });
+
+  it("rejects an impression whose consentId does not match the consent record", () => {
+    const consent = createConsent({ grantedSignals: ["lang"], key, now: 0, ttlMs: 1_000_000 });
+    const imp = makeImpression({
+      bidders, signals: ["lang:ts"], seed: 1n, reserveCents: 100, consentId: "c_forged", key, now: 10,
+    });
+    const r = verifyLog([imp], { publicKeyHex: key.publicKeyHex, consent });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("consent-mismatch");
   });
 });

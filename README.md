@@ -21,7 +21,7 @@ npx sponsorline off         # immediate revoke
 
 ## Verified claim
 
-> Sponsorline showed 1000 relevant sponsor lines across 3 project types with 0 bytes of code or path in egress, 100% reproducible auctions, 100% of invalid-consent cases correctly gated to the plain line, exact ledger reconciliation (error 0), and stranger verification in 11ms p95.
+> Sponsorline showed 1000 relevant sponsor lines across 3 project types with 0 bytes of code or path in egress, 100% reproducible auctions, 100% of invalid-consent cases correctly gated to the plain line, exact ledger reconciliation (error 0), and stranger verification in 12ms p95 (reference run; the deterministic invariants are machine-independent, latency is not).
 
 See `bench/results/report.md` for the full table, baselines, and provenance.
 

@@ -25,7 +25,10 @@ export async function runVerify(input: VerifyInput): Promise<VerifyOutput> {
   }
 
   const log = store.readWitness();
-  const res = verifyLog(log, { publicKeyHex });
+  // Bind every impression to the signed consent (id, granted families, validity
+  // window). A revoked/expired consent does NOT fail past impressions that were
+  // logged while it was live — only signals or timestamps outside the consent do.
+  const res = verifyLog(log, { publicKeyHex, consent });
   if (res.ok) return { exitCode: 0, report: res };
   return { exitCode: 1, report: res };
 }
