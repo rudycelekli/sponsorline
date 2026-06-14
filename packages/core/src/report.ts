@@ -1,10 +1,17 @@
 import { verifyReceipt, type Receipt } from "./receipt.js";
+import { screenReceipts, type AntiFraudPolicy } from "./antifraud.js";
 
 // Marketer-facing reach report, built purely from signed device receipts. The
 // platform (or the marketer) ingests receipts, throws out anything that fails its
 // seal, deduplicates per device+epoch so a resubmission cannot inflate numbers, and
 // rolls the survivors up per campaign. "Reach" is the count of DISTINCT signed
 // devices — the honest "your brand was in front of N people" — never a guess.
+//
+// When an AntiFraudPolicy is supplied, receipts are screened FIRST: anything that is
+// physically impossible (volume over the per-device ceiling), over the spend cap, or
+// out of the epoch window is withheld before aggregation. This keeps fabricated reach
+// out of the numbers a marketer pays against. The count of withheld receipts is
+// surfaced as flaggedReceipts so the screening is auditable, never silent.
 
 export interface CampaignReport {
   campaignId: string;
@@ -18,7 +25,8 @@ export interface CampaignReport {
 export interface MarketerReport {
   campaigns: CampaignReport[];
   acceptedReceipts: number;
-  rejectedReceipts: number;
+  rejectedReceipts: number; // failed the seal check (tampered / forged)
+  flaggedReceipts: number; // sealed but withheld by anti-fraud screening (0 when no policy)
 }
 
 interface Accum {
@@ -29,7 +37,25 @@ interface Accum {
   lastTs: number;
 }
 
-export function aggregateReceipts(receipts: Receipt[]): MarketerReport {
+export function aggregateReceipts(receipts: Receipt[], policy?: AntiFraudPolicy): MarketerReport {
+  // Optional anti-fraud gate: withhold implausible receipts before they can influence
+  // reach or spend. We keep two failure modes distinct: a broken/forged seal is a
+  // REJECT (counted below in the aggregation loop, so the numbers match the no-policy
+  // path), while a sealed-but-implausible receipt is a FLAG. To do that we only screen
+  // receipts that already pass their seal, leaving seal failures to the loop's reject
+  // counter.
+  let flagged = 0;
+  let pool = receipts;
+  if (policy) {
+    const sealOk: Receipt[] = [];
+    const sealBad: Receipt[] = [];
+    for (const r of receipts) (verifyReceipt(r).ok ? sealOk : sealBad).push(r);
+    const screened = screenReceipts(sealOk, policy);
+    flagged = screened.flagged.length;
+    // Re-attach seal-failed receipts so the loop below still counts them as rejected.
+    pool = [...screened.clean, ...sealBad];
+  }
+
   // Dedupe by device+epoch first: a device submitting the same period twice must not
   // double-count. First valid receipt for a (pubkey, epoch) pair wins.
   const seen = new Set<string>();
@@ -37,7 +63,7 @@ export function aggregateReceipts(receipts: Receipt[]): MarketerReport {
   let rejected = 0;
   const byCampaign = new Map<string, Accum>();
 
-  for (const r of receipts) {
+  for (const r of pool) {
     if (!verifyReceipt(r).ok) {
       rejected++;
       continue;
@@ -78,5 +104,5 @@ export function aggregateReceipts(receipts: Receipt[]): MarketerReport {
     }))
     .sort((x, y) => (x.campaignId < y.campaignId ? -1 : 1));
 
-  return { campaigns, acceptedReceipts: accepted, rejectedReceipts: rejected };
+  return { campaigns, acceptedReceipts: accepted, rejectedReceipts: rejected, flaggedReceipts: flagged };
 }

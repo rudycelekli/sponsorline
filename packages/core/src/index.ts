@@ -6,6 +6,7 @@ export * from "./targeting.js";
 export * from "./dp.js";
 export * from "./campaign.js";
 export * from "./receipt.js";
+export * from "./antifraud.js";
 export * from "./report.js";
 export * from "./crypto.js";
 export * from "./witness.js";

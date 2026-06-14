@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { deriveDeviceKey, chainHash } from "../src/crypto.js";
+import { deriveDeviceKey, chainHash, seal } from "../src/crypto.js";
 import { makeImpression, type Impression } from "../src/witness.js";
-import { buildReceipt, type Receipt } from "../src/receipt.js";
+import { buildReceipt, type Receipt, type ReceiptPayload } from "../src/receipt.js";
 import { aggregateReceipts } from "../src/report.js";
+import { DEFAULT_ANTIFRAUD_POLICY } from "../src/antifraud.js";
 import type { Bidder } from "../src/auction.js";
 
 const bidders: Bidder[] = [
@@ -58,5 +59,25 @@ describe("aggregateReceipts", () => {
     const report = aggregateReceipts([]);
     expect(report.campaigns).toEqual([]);
     expect(report.acceptedReceipts).toBe(0);
+    expect(report.flaggedReceipts).toBe(0);
+  });
+
+  it("with a policy, flags an implausible-but-validly-sealed receipt and keeps it out of the reach numbers", () => {
+    const good = deviceReceipt("dev-1", [[["lang:ts"], 100]]).receipt;
+    // Attacker re-seals an inflated payload with a key they control: the seal is valid
+    // but the volume is physically impossible under the 15-min rotation cap.
+    const k = deriveDeviceKey("bot-farm");
+    const payload: ReceiptPayload = {
+      v: 1,
+      devicePubKey: k.publicKeyHex,
+      epoch: 0,
+      rows: [{ campaignId: "acme-ci", impressions: 5000, spentCents: 1000, firstTs: 0, lastTs: 1 }],
+    };
+    const forged = seal(payload, k);
+    const report = aggregateReceipts([good, forged], DEFAULT_ANTIFRAUD_POLICY);
+    expect(report.flaggedReceipts).toBe(1);
+    expect(report.acceptedReceipts).toBe(1);
+    expect(report.rejectedReceipts).toBe(0);
+    expect(report.campaigns.find((c) => c.campaignId === "acme-ci")!.impressions).toBe(1);
   });
 });
