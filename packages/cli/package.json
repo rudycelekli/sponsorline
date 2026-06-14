@@ -5,6 +5,7 @@
   "bin": { "sponsorline": "./bin/sponsorline.mjs" },
   "files": ["dist", "bin"],
   "exports": {
+    "./dist/*": "./dist/*",
     "./store.js": "./dist/store.js",
     "./cmd-earnings.js": "./dist/cmd-earnings.js",
     "./cmd-verify.js": "./dist/cmd-verify.js"
