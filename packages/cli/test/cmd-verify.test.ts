@@ -65,6 +65,12 @@ describe("verify", () => {
     expect(r.exitCode).toBe(2);
   });
 
+  it("returns exit 1 (never crashes) on a malformed witness log", async () => {
+    writeFileSync(join(appdir, "witness.jsonl"), '{"truncated json\n');
+    const r = await runVerify({ appDir: appdir, now: 10 });
+    expect(r.exitCode).toBe(1);
+  });
+
   it("verifies from a true clean clone: only shareable artifacts, no salt or inventory", async () => {
     // Simulate a stranger cloning the published proof bundle into a fresh dir.
     // They receive ONLY the trust anchor + consent + witness — never the salt

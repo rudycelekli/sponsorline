@@ -24,7 +24,15 @@ export async function runVerify(input: VerifyInput): Promise<VerifyOutput> {
     return { exitCode: 1, report: { ok: false, replayedAuctions: 0, reason: "consent signature invalid" } };
   }
 
-  const log = store.readWitness();
+  // A corrupted/truncated witness log (partial write, disk fault, or tampering
+  // by truncation) must FAIL verification cleanly — never crash the one command
+  // a stranger runs to check the proof.
+  let log;
+  try {
+    log = store.readWitness();
+  } catch {
+    return { exitCode: 1, report: { ok: false, replayedAuctions: 0, reason: "malformed witness log" } };
+  }
   // Bind every impression to the signed consent (id, granted families, validity
   // window). A revoked/expired consent does NOT fail past impressions that were
   // logged while it was live — only signals or timestamps outside the consent do.
