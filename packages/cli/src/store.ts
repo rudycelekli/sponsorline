@@ -42,4 +42,12 @@ export class Store {
     const f = this.p("bandit.json");
     return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : {};
   }
+
+  writeRenderState(state: RenderState) { writeFileSync(this.p("render.json"), JSON.stringify(state)); }
+  readRenderState(): RenderState | null {
+    const f = this.p("render.json");
+    return existsSync(f) ? (JSON.parse(readFileSync(f, "utf8")) as RenderState) : null;
+  }
 }
+
+export interface RenderState { lastImpressionAt: number; lastCreative: string; }

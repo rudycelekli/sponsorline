@@ -14,6 +14,7 @@ import { Store } from "./store.js";
 
 const MANIFESTS = ["package.json", "tsconfig.json", "requirements.txt", "pyproject.toml", "cargo.toml", "go.mod"];
 const RESERVE_CENTS = 100;
+const DEFAULT_ROTATE_MS = 1000 * 60 * 15; // one billable impression per 15-min window
 
 export interface StatuslineInput {
   appDir: string;
@@ -21,11 +22,16 @@ export interface StatuslineInput {
   stdin: string;
   now: number;
   seed: bigint;
+  rotateMs?: number;
 }
 export interface StatuslineOutput { line: string; exitCode: number; }
 
 function plainLine(model: string): string {
   return `${model}`.trim() || "Claude";
+}
+
+function sponsorLine(model: string, creative: string): string {
+  return `${model} · Sponsored: ${creative}`;
 }
 
 export async function runStatusline(input: StatuslineInput): Promise<StatuslineOutput> {
@@ -43,6 +49,15 @@ export async function runStatusline(input: StatuslineInput): Promise<StatuslineO
     const key = deriveDeviceKey(input.salt);
     const cv = validateConsent(consent, { publicKeyHex: key.publicKeyHex, now: input.now });
     if (!cv.valid) return { line: plainLine(modelName), exitCode: 0 };
+
+    // Rotation cap: at most ONE billable impression per window. Between windows,
+    // re-display the cached creative (re-composed with the CURRENT model name) and
+    // log NOTHING — this keeps the witness log bounded and the ledger billing-honest.
+    const rotateMs = input.rotateMs ?? DEFAULT_ROTATE_MS;
+    const render = store.readRenderState();
+    if (render && input.now - render.lastImpressionAt < rotateMs) {
+      return { line: sponsorLine(modelName, render.lastCreative), exitCode: 0 };
+    }
 
     const present = new Set(readdirSync(cwd));
     const manifests = MANIFESTS.filter((m) => present.has(m));
@@ -85,7 +100,9 @@ export async function runStatusline(input: StatuslineInput): Promise<StatuslineO
       impressionCount: ledger.impressionCount,
     });
 
-    return { line: `${modelName} · Sponsored: ${result.winningCreative}`, exitCode: 0 };
+    store.writeRenderState({ lastImpressionAt: input.now, lastCreative: result.winningCreative! });
+
+    return { line: sponsorLine(modelName, result.winningCreative!), exitCode: 0 };
   } catch {
     return { line: plainLine(modelName), exitCode: 0 };
   }

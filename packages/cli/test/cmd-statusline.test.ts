@@ -51,4 +51,29 @@ describe("statusline", () => {
     for (const s of imp.payload.signals) expect(/^(lang|framework|task):/.test(s)).toBe(true);
     expect(JSON.stringify(imp.payload)).not.toContain(projectdir);
   });
+
+  it("logs ONE billable impression per rotation window, re-displaying the cached line between", async () => {
+    const rotateMs = 1000;
+    const first = await runStatusline({ appDir: appdir, salt: SALT, stdin: ctx(projectdir), now: 0, seed: 42n, rotateMs });
+    const second = await runStatusline({ appDir: appdir, salt: SALT, stdin: ctx(projectdir), now: 500, seed: 99n, rotateMs });
+    expect(first.line).toContain("Try Acme CI");
+    expect(second.line).toBe(first.line); // cached re-render, no new auction
+    expect(new Store(appdir).readWitness()).toHaveLength(1); // only ONE impression billed
+  });
+
+  it("opens a new impression once the rotation window elapses", async () => {
+    const rotateMs = 1000;
+    await runStatusline({ appDir: appdir, salt: SALT, stdin: ctx(projectdir), now: 0, seed: 42n, rotateMs });
+    await runStatusline({ appDir: appdir, salt: SALT, stdin: ctx(projectdir), now: 1500, seed: 42n, rotateMs });
+    expect(new Store(appdir).readWitness()).toHaveLength(2);
+  });
+
+  it("re-renders the cached line with the CURRENT model name (not a stale one)", async () => {
+    const rotateMs = 1000;
+    await runStatusline({ appDir: appdir, salt: SALT, stdin: ctx(projectdir), now: 0, seed: 42n, rotateMs });
+    const ctx2 = JSON.stringify({ workspace: { current_dir: projectdir }, model: { display_name: "Opus" } });
+    const out = await runStatusline({ appDir: appdir, salt: SALT, stdin: ctx2, now: 500, seed: 42n, rotateMs });
+    expect(out.line).toContain("Opus");
+    expect(out.line).toContain("Try Acme CI");
+  });
 });
