@@ -112,7 +112,7 @@ plus a per-fixture slice breakdown and sample `why`-explanations + sample fault 
 | `sponsorline verify [--log <p>] [--json]` | Stranger command: validate consent signatures + re-derive every auction from the witness log + assert privacy schema over recorded egress | 0 ok, 1 tamper/regression, 2 precondition |
 | `sponsorline off` | Immediate revocation: remove statusLine config + mark consent revoked; subsequent renders are plain | 0 |
 
-All commands support `--json`. The verify exit-code contract (0/1/2 with machine-parseable `precondition` reasons) is adopted from ProofKit/ruflo.
+The reporting commands (`why`, `earnings`, `verify`) support `--json` for machine-readable output. `statusline` instead speaks Claude Code's official plain-stdout contract (emitting JSON there would corrupt the status bar), and `init`/`off` are actions that communicate through exit codes. The verify exit-code contract (0/1/2 with machine-parseable `precondition` reasons) is adopted from ProofKit/ruflo.
 
 ### 4.2 MCP tools (stdio server, `sponsorline mcp start`) — the advertiser/enterprise seam
 
