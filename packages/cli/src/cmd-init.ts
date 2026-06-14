@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { randomBytes } from "node:crypto";
 import { deriveDeviceKey, createConsent } from "@sponsorline/core";
@@ -19,7 +19,10 @@ function ensureSalt(appDir: string): string {
   const saltPath = join(appDir, "salt");
   if (existsSync(saltPath)) return readFileSync(saltPath, "utf8");
   const salt = randomBytes(32).toString("hex");
-  writeFileSync(saltPath, salt);
+  // The salt is the Ed25519 private-key seed. Restrict to owner-only so another
+  // local user cannot read it and forge impressions under this device key.
+  writeFileSync(saltPath, salt, { mode: 0o600 });
+  chmodSync(saltPath, 0o600); // enforce even if a loose umask widened the create mode
   return salt;
 }
 

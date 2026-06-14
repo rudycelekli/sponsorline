@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { mkdtempSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync, existsSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { deriveDeviceKey, validateConsent } from "@sponsorline/core";
@@ -41,6 +41,13 @@ describe("init / off", () => {
     const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
     expect(settings.theme).toBe("dark");
     expect(settings.statusLine).toBeDefined();
+  });
+
+  it("writes the salt (private-key seed) with owner-only permissions", async () => {
+    if (process.platform === "win32") return; // POSIX mode bits are not meaningful on Windows
+    await runInit({ appDir: appdir, settingsPath, acceptDefaults: true, now: 0, ttlMs: 1e12 });
+    const mode = statSync(join(appdir, "salt")).mode & 0o777;
+    expect(mode).toBe(0o600);
   });
 
   it("preserves the existing consent (stable id) across re-init", async () => {
