@@ -1,0 +1,6 @@
+[
+  { "id": "acme-ci", "bidCents": 500, "targetSignals": ["lang:ts"], "creative": "Acme CI — fast TS builds" },
+  { "id": "vectorhub", "bidCents": 700, "targetSignals": ["lang:py", "framework:pytorch"], "creative": "VectorHub — GPU notebooks" },
+  { "id": "crater", "bidCents": 400, "targetSignals": ["lang:rust", "framework:clap"], "creative": "Crater — Rust release tooling" },
+  { "id": "broad", "bidCents": 300, "targetSignals": ["lang:ts", "lang:py", "lang:rust"], "creative": "DevTime — track your flow" }
+]
