@@ -9,6 +9,8 @@ import { runVerify } from "./cmd-verify.js";
 import { runWhy } from "./cmd-why.js";
 import { runEarnings } from "./cmd-earnings.js";
 import { runFeedback } from "./cmd-feedback.js";
+import { runStatus } from "./cmd-status.js";
+import { execSync } from "node:child_process";
 
 function readStdin(): Promise<string> {
   return new Promise((resolve) => {
@@ -27,6 +29,17 @@ function ccSettingsPath(): string {
 function salt(dir: string): string {
   const p = join(dir, "salt");
   return existsSync(p) ? readFileSync(p, "utf8") : "uninitialized";
+}
+// Does the `sponsorline` name resolve on PATH? Claude Code's statusLine hook
+// spawns the bare command, so a CLI that isn't installed globally / linked will
+// silently never run. `command -v` is the portable POSIX probe.
+function cliResolves(): boolean {
+  try {
+    execSync(process.platform === "win32" ? "where sponsorline" : "command -v sponsorline", { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function main(argv: string[]): Promise<number> {
@@ -65,8 +78,18 @@ export async function main(argv: string[]): Promise<number> {
       process.stdout.write((json ? JSON.stringify(out.report) : `verify: ${out.report.ok ? "OK" : "FAIL — " + out.report.reason} (${out.report.replayedAuctions} auctions replayed)`) + "\n");
       return out.exitCode;
     }
+    case "status": {
+      const out = runStatus({ appDir: dir, salt: salt(dir), settingsPath: ccSettingsPath(), now, cliOnPath: cliResolves() });
+      if (json) {
+        process.stdout.write(JSON.stringify(out) + "\n");
+      } else {
+        process.stdout.write(`Sponsorline: ${out.ready ? "READY" : "NOT READY"}\n`);
+        for (const c of out.checks) process.stdout.write(`  ${c.ok ? "✓" : "✗"} ${c.name}: ${c.detail}\n`);
+      }
+      return out.exitCode;
+    }
     default:
-      process.stdout.write("Usage: sponsorline <init|statusline|why|earnings|verify|feedback|off> [--json]\n");
+      process.stdout.write("Usage: sponsorline <init|statusline|status|why|earnings|verify|feedback|off> [--json]\n");
       return cmd ? 2 : 0;
   }
 }
