@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync, appendFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { Bidder, ConsentRecord, Impression } from "@sponsorline/core";
+import { chainHash, type Bidder, type ConsentRecord, type Impression } from "@sponsorline/core";
 
 export class Store {
   constructor(private dir: string) {
@@ -25,6 +25,11 @@ export class Store {
     const f = this.p("witness.jsonl");
     if (!existsSync(f)) return [];
     return readFileSync(f, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as Impression);
+  }
+  // chainHash of the current head entry ("" if none) — the prevHash for the next impression.
+  readWitnessTailHash(): string {
+    const log = this.readWitness();
+    return log.length === 0 ? "" : chainHash(log[log.length - 1].payload);
   }
 
   writeLedger(state: { developerBalanceCents: number; platformBalanceCents: number; impressionCount: number }) {

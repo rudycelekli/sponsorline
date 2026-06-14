@@ -38,3 +38,11 @@ export function verifySeal<T>(sealed: Sealed<T>, publicKeyHex: string): boolean 
     return false;
   }
 }
+
+// Content hash of a payload, used to hash-chain the witness log. Each impression
+// embeds the previous payload's chainHash, so a single signature over the HEAD
+// payload transitively authenticates the entire ordered history — verification
+// is O(n) cheap hashing + ONE Ed25519 check instead of O(n) signature checks.
+export function chainHash(payload: unknown): string {
+  return bytesToHex(sha256(canonicalBytes(payload)));
+}

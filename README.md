@@ -21,13 +21,17 @@ npx sponsorline off         # immediate revoke
 
 ## Verified claim
 
-> Sponsorline showed 1000 relevant sponsor lines across 3 project types with 0 bytes of code or path in egress, 100% reproducible auctions, 100% of invalid-consent cases correctly gated to the plain line, exact ledger reconciliation (error 0), and stranger verification in 1343ms p95.
+> Sponsorline showed 1000 relevant sponsor lines across 3 project types with 0 bytes of code or path in egress, 100% reproducible auctions, 100% of invalid-consent cases correctly gated to the plain line, exact ledger reconciliation (error 0), and stranger verification in 11ms p95.
 
 See `bench/results/report.md` for the full table, baselines, and provenance.
 
 ## How the privacy guarantee works
 
 Raw developer context never leaves your device. The only thing the auction sees is a coarse, versioned, allowlisted interest vector (`lang:*`, `framework:*`, `task:*`). The benchmark asserts **0 bytes** of code or path in egress, and `sponsorline verify` re-checks it against every recorded impression.
+
+## How verification stays fast as you earn
+
+The witness log is a hash chain: each impression embeds the previous payload's hash. A single Ed25519 signature over the head payload therefore vouches for the entire ordered history, so `verify` costs O(n) cheap hashing plus **one** signature check instead of one check per impression. Verification stays well under the 2-second target even at multi-year volume (≈58ms at 8,760 impressions, ≈158ms at 26,280). Any insert, delete, reorder, or edit of an entry breaks a chain link.
 
 ## Architecture
 

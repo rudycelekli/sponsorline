@@ -85,6 +85,7 @@ export async function runStatusline(input: StatuslineInput): Promise<StatuslineO
     const imp = makeImpression({
       bidders: ordered, signals: vector.signals, seed: input.seed,
       reserveCents: RESERVE_CENTS, consentId: consent.payload.id, key, now: input.now,
+      prevHash: store.readWitnessTailHash(),
     });
     store.appendWitness(imp);
 

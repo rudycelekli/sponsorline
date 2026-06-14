@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import {
   buildInterestVector, runAuction, deriveDeviceKey, createConsent,
-  makeImpression, verifyLog, Ledger, reconcile,
+  makeImpression, verifyLog, Ledger, reconcile, chainHash,
 } from "@sponsorline/core";
 import { naivePick } from "./baselines/naive/baseline.mjs";
 
@@ -35,7 +35,8 @@ for (let i = 0; i < RENDERS; i++) {
   // Egress = the impression payload that would leave the device. Assert no code/paths.
   const r = runAuction(inventory, vector.signals, SEED + BigInt(i), RESERVE);
   if (!r.winnerId) continue;
-  const imp = makeImpression({ bidders: inventory, signals: vector.signals, seed: SEED + BigInt(i), reserveCents: RESERVE, consentId: consent.payload.id, key, now: i });
+  const prevHash = log.length === 0 ? "" : chainHash(log[log.length - 1].payload);
+  const imp = makeImpression({ bidders: inventory, signals: vector.signals, seed: SEED + BigInt(i), reserveCents: RESERVE, consentId: consent.payload.id, key, now: i, prevHash });
   const egress = JSON.stringify(imp.payload);
   for (const m of manifests) if (egress.includes(m)) codePathBytesInEgress += m.length;
   if (egress.includes(dir)) codePathBytesInEgress += dir.length;

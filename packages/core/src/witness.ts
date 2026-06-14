@@ -1,11 +1,12 @@
 import { runAuction, type Bidder } from "./auction.js";
-import { seal, verifySeal, type DeviceKey, type Sealed } from "./crypto.js";
+import { seal, verifySeal, chainHash, type DeviceKey, type Sealed } from "./crypto.js";
 import { isAllowlisted } from "./interest.js";
 
 export interface ImpressionPayload {
   v: 1;
   ts: number;
   consentId: string;
+  prevHash: string; // chainHash of the previous payload ("" for genesis) — links the log
   signals: string[]; // the egress payload — MUST be allowlist-clean
   seed: string;
   reserveCents: number;
@@ -25,6 +26,7 @@ export interface MakeImpressionInput {
   consentId: string;
   key: DeviceKey;
   now?: number;
+  prevHash?: string; // chainHash of the prior entry; "" (default) for the genesis impression
 }
 
 export function makeImpression(input: MakeImpressionInput): Impression {
@@ -33,6 +35,7 @@ export function makeImpression(input: MakeImpressionInput): Impression {
     v: 1,
     ts: input.now ?? 0,
     consentId: input.consentId,
+    prevHash: input.prevHash ?? "",
     signals: [...input.signals].sort(),
     seed: input.seed.toString(),
     reserveCents: input.reserveCents,
@@ -56,16 +59,31 @@ export interface VerifyOpts {
 export interface VerifyResult {
   ok: boolean;
   replayedAuctions: number;
-  reason?: "seal-invalid" | "privacy-violation" | "replay-mismatch";
+  reason?: "seal-invalid" | "privacy-violation" | "replay-mismatch" | "chain-broken";
   failedIndex?: number;
 }
 
+// Verification cost is O(n) cheap hashing + replay plus exactly ONE Ed25519 check
+// (the head). The hash chain makes the single head signature transitively vouch for
+// every prior payload, so verify stays fast as the log grows to tens of thousands.
 export function verifyLog(log: Impression[], opts: VerifyOpts): VerifyResult {
+  if (log.length === 0) return { ok: true, replayedAuctions: 0 };
+
+  // 1. Authenticate the HEAD with the single device signature.
+  const head = log[log.length - 1];
+  if (!verifySeal(head, opts.publicKeyHex)) {
+    return { ok: false, replayedAuctions: 0, reason: "seal-invalid", failedIndex: log.length - 1 };
+  }
+
+  // 2. Walk the hash chain. The head's prevHash is signed, so a matching chain
+  //    transitively authenticates every payload back to genesis. Any insert,
+  //    delete, reorder, or edit of a non-head entry breaks a link here.
+  let prev = "";
   let replayed = 0;
   for (let i = 0; i < log.length; i++) {
     const entry = log[i];
-    if (!verifySeal(entry, opts.publicKeyHex)) {
-      return { ok: false, replayedAuctions: replayed, reason: "seal-invalid", failedIndex: i };
+    if (entry.payload.prevHash !== prev) {
+      return { ok: false, replayedAuctions: replayed, reason: "chain-broken", failedIndex: i };
     }
     for (const s of entry.payload.signals) {
       if (!isAllowlisted(s)) {
@@ -87,6 +105,7 @@ export function verifyLog(log: Impression[], opts: VerifyOpts): VerifyResult {
     ) {
       return { ok: false, replayedAuctions: replayed, reason: "replay-mismatch", failedIndex: i };
     }
+    prev = chainHash(entry.payload);
     replayed++;
   }
   return { ok: true, replayedAuctions: replayed };

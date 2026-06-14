@@ -20,8 +20,9 @@ beforeEach(() => {
   const store = new Store(appdir);
   store.writeConsent(createConsent({ grantedSignals: ["lang"], key, now: 0, ttlMs: 1e12 }));
   store.writeInventory(inv);
-  store.appendWitness(makeImpression({ bidders: inv, signals: ["lang:ts"], seed: 1n, reserveCents: 100, consentId: "c", key, now: 1 }));
-  store.appendWitness(makeImpression({ bidders: inv, signals: ["lang:ts"], seed: 2n, reserveCents: 100, consentId: "c", key, now: 2 }));
+  // Append as the real statusline path does: each entry chains off the current head.
+  store.appendWitness(makeImpression({ bidders: inv, signals: ["lang:ts"], seed: 1n, reserveCents: 100, consentId: "c", key, now: 1, prevHash: store.readWitnessTailHash() }));
+  store.appendWitness(makeImpression({ bidders: inv, signals: ["lang:ts"], seed: 2n, reserveCents: 100, consentId: "c", key, now: 2, prevHash: store.readWitnessTailHash() }));
 });
 
 describe("verify", () => {

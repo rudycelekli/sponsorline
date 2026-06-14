@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { deriveDeviceKey, seal } from "../src/crypto.js";
+import { deriveDeviceKey, seal, chainHash } from "../src/crypto.js";
 import { makeImpression, verifyLog } from "../src/witness.js";
 import type { Bidder } from "../src/auction.js";
 
@@ -87,5 +87,37 @@ describe("witness log", () => {
     const r = verifyLog([{ payload: forged, sig: resealed.sig }], { publicKeyHex: key.publicKeyHex });
     expect(r.ok).toBe(false);
     expect(r.reason).toBe("replay-mismatch");
+  });
+
+  it("verifies a multi-entry hash-chained log via a single head signature", () => {
+    const i0 = makeImpression({ bidders, signals: ["lang:ts"], seed: 1n, reserveCents: 100, consentId: "c1", key, prevHash: "" });
+    const i1 = makeImpression({ bidders, signals: ["lang:ts"], seed: 2n, reserveCents: 100, consentId: "c1", key, prevHash: chainHash(i0.payload) });
+    const i2 = makeImpression({ bidders, signals: ["lang:ts"], seed: 3n, reserveCents: 100, consentId: "c1", key, prevHash: chainHash(i1.payload) });
+    const r = verifyLog([i0, i1, i2], { publicKeyHex: key.publicKeyHex });
+    expect(r.ok).toBe(true);
+    expect(r.replayedAuctions).toBe(3);
+  });
+
+  it("detects tampering of a non-head entry via the hash chain (head seal still valid)", () => {
+    const i0 = makeImpression({ bidders, signals: ["lang:ts"], seed: 1n, reserveCents: 100, consentId: "c1", key, prevHash: "" });
+    const i1 = makeImpression({ bidders, signals: ["lang:ts"], seed: 2n, reserveCents: 100, consentId: "c1", key, prevHash: chainHash(i0.payload) });
+    const i2 = makeImpression({ bidders, signals: ["lang:ts"], seed: 3n, reserveCents: 100, consentId: "c1", key, prevHash: chainHash(i1.payload) });
+    // Rewrite the MIDDLE entry's timestamp and re-seal it so its own seal is valid
+    // and replay still passes. The head (i2) seal is untouched and valid — only the
+    // downstream chain link (i2.prevHash no longer matches chainHash(tampered)) exposes it.
+    const tampered = seal({ ...i1.payload, ts: i1.payload.ts + 999 }, key);
+    const r = verifyLog([i0, tampered, i2], { publicKeyHex: key.publicKeyHex });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("chain-broken");
+  });
+
+  it("detects a deleted entry via the hash chain", () => {
+    const i0 = makeImpression({ bidders, signals: ["lang:ts"], seed: 1n, reserveCents: 100, consentId: "c1", key, prevHash: "" });
+    const i1 = makeImpression({ bidders, signals: ["lang:ts"], seed: 2n, reserveCents: 100, consentId: "c1", key, prevHash: chainHash(i0.payload) });
+    const i2 = makeImpression({ bidders, signals: ["lang:ts"], seed: 3n, reserveCents: 100, consentId: "c1", key, prevHash: chainHash(i1.payload) });
+    // Drop the middle entry: i2.prevHash no longer matches chainHash(i0).
+    const r = verifyLog([i0, i2], { publicKeyHex: key.publicKeyHex });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("chain-broken");
   });
 });
