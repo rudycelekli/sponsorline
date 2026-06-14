@@ -64,11 +64,15 @@ Summary of what is and is not in scope:
   plausible low-volume receipt. Screening raises the cost of farming; the final unique-identity
   gate belongs at payout-time KYC (e.g. Stripe Connect identity), not in this layer. We do not
   claim to solve it here.
-- **Live money movement.** Developer payouts have a built, tested *gate* (`payout.ts`): money
-  may be authorized only when KYC is verified, a payout account is connected, the amount is in
-  range, **and** an explicit per-execution operator-authorization flag is set. The only shipped
-  gateway is a dry-run that moves no real money; a live Stripe Connect gateway (with real keys)
-  is intentionally not built here, so live money cannot move implicitly. Advertiser billing is
+- **Live money movement is off by default behind three independent controls.** Developer
+  payouts have a built, tested *gate* (`payout.ts`): money may be authorized only when KYC is
+  verified, a payout account is connected, the amount is in range, **and** an explicit
+  per-execution operator-authorization flag is set. A live Stripe Connect gateway
+  (`packages/mcp/src/stripe-gateway.ts`) now exists, but it is selected only when **both**
+  `STRIPE_SECRET_KEY` is present **and** `SPONSORLINE_LIVE_PAYOUTS === "true"`; absent either,
+  the dry-run gateway (which moves no real money) is used. The live gateway reads keys from the
+  environment only — never from arguments or disk — and every test exercises it through an
+  injected mock transport, so the suite makes zero live API calls. Advertiser billing is
   likewise not yet wired.
 
 ## Reporting a vulnerability

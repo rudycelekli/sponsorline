@@ -109,10 +109,14 @@ a different layer.
 - **Unique-human identity.** Deferred to payout-time KYC (see T4).
 - **Live money movement.** Developer payouts have a built, tested gate (`payout.ts`) with two
   independent controls: KYC-verified + connected account + in-range amount, AND an explicit
-  operator-authorization flag (defaults off). The only shipped gateway is a dry-run that moves
-  no real money. A live Stripe Connect gateway with real keys is intentionally not built, so
-  live money cannot move implicitly. Advertiser billing and tax handling (e.g. 1099) remain
-  out of scope until explicitly enabled.
+  operator-authorization flag (defaults off). A live Stripe Connect gateway
+  (`packages/mcp/src/stripe-gateway.ts`) is now built, but it is wired behind a third control:
+  it is selected only when both `STRIPE_SECRET_KEY` is set and `SPONSORLINE_LIVE_PAYOUTS` ===
+  `"true"`; otherwise the dry-run gateway (no real money) is used. Keys are read from the
+  environment only, and the test suite drives the gateway through a mocked transport (zero live
+  API calls). So live money still cannot move implicitly — it requires KYC, operator
+  authorization, a configured secret key, and an explicit live opt-in, all at once. Advertiser
+  billing and tax handling (e.g. 1099) remain out of scope until explicitly enabled.
 - **Outbound differential-privacy aggregate egress (the "C2" path).** Viable only above
   ~200 contributing devices (proven in `bench/dp-sim.mjs`) and gated behind explicit operator
   approval; it is not enabled by default.
