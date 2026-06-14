@@ -42,4 +42,4 @@ What it does **not** prove on its own is *whose* device produced the log. The pu
 
 ## Architecture
 
-`@sponsorline/core` (pure substrate) → `sponsorline` CLI (the official statusLine command + init/why/feedback/earnings/verify/off) → `@sponsorline/mcp` (advertiser/enterprise seam). Local JSONL witness log; Ed25519 seals; deterministic second-price auction. See `docs/adr/ADR-0001-sponsorline-v0.1.md`.
+`@sponsorline/core` (pure substrate) → `sponsorline` CLI (the official statusLine command + init/why/feedback/earnings/verify/off) → `@sponsorline/mcp` (advertiser/enterprise seam). `sponsorline-cursor` is a thin Cursor/VS Code status-bar adapter that invokes the same CLI engine over the identical stdin-JSON/stdout-line contract Claude Code uses — no binary patching, shared on-device state. Local JSONL witness log; Ed25519 seals; deterministic second-price auction. See `docs/adr/ADR-0001-sponsorline-v0.1.md`.

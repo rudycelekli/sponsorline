@@ -1,0 +1,40 @@
+{
+  "name": "sponsorline-cursor",
+  "displayName": "Sponsorline for Cursor",
+  "description": "Consent-first sponsor line in the Cursor status bar. Reuses the local sponsorline engine — never sees your code.",
+  "version": "0.2.0",
+  "publisher": "sponsorline",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "main": "./dist/extension.js",
+  "files": ["dist"],
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      { "command": "sponsorline.feedback", "title": "Sponsorline: Rate this sponsor line" }
+    ],
+    "configuration": {
+      "title": "Sponsorline",
+      "properties": {
+        "sponsorline.command": {
+          "type": "string",
+          "default": "sponsorline",
+          "description": "Path to the sponsorline CLI binary (the shared on-device engine)."
+        },
+        "sponsorline.modelName": {
+          "type": "string",
+          "default": "Cursor",
+          "description": "Label shown before the sponsor segment in the status bar."
+        },
+        "sponsorline.refreshSeconds": {
+          "type": "number",
+          "default": 60,
+          "description": "How often to re-query the local engine. The CLI's 15-minute rotation cap means most refreshes return the cached line."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup src/extension.ts --format cjs --external vscode --clean"
+  }
+}
