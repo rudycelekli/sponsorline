@@ -1,10 +1,12 @@
 import { makeRng } from "./prng.js";
+import { evalPredicate, type TargetPredicate } from "./targeting.js";
 
 export interface Bidder {
   id: string;
   bidCents: number; // integer cents
-  targetSignals: string[]; // matches if ANY signal intersects the vector
+  targetSignals: string[]; // legacy: matches if ANY signal intersects the vector
   creative: string;
+  target?: TargetPredicate; // precise boolean targeting; takes precedence over targetSignals
 }
 
 export interface AuctionResult {
@@ -16,6 +18,9 @@ export interface AuctionResult {
 
 function eligible(b: Bidder, signals: string[]): boolean {
   const set = new Set(signals);
+  // A precise predicate, when present, takes precedence; otherwise fall back to the
+  // legacy ANY-intersection over targetSignals so v0.1/v0.2 campaigns are unchanged.
+  if (b.target) return evalPredicate(b.target, set);
   return b.targetSignals.some((s) => set.has(s));
 }
 

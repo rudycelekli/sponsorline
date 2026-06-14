@@ -42,4 +42,26 @@ describe("deterministic Vickrey auction", () => {
     expect(r1.winnerId).toBe(r2.winnerId);
     expect(r1.clearingPriceCents).toBe(500); // second price equals tied bid
   });
+
+  it("a target predicate decides eligibility when present", () => {
+    const precise: Bidder[] = [
+      {
+        id: "p",
+        bidCents: 500,
+        targetSignals: [],
+        creative: "P",
+        target: { all: [{ atom: "lang:rust" }, { not: { atom: "framework:react" } }] },
+      },
+    ];
+    // rust without react → eligible (clears at reserve, sole bidder)
+    expect(runAuction(precise, ["lang:rust", "task:test"], 9n, 100).winnerId).toBe("p");
+    // rust WITH react → excluded by the NOT
+    expect(runAuction(precise, ["lang:rust", "framework:react"], 9n, 100).winnerId).toBeNull();
+  });
+
+  it("absence of a predicate preserves legacy ANY-intersection", () => {
+    const legacy: Bidder[] = [{ id: "L", bidCents: 500, targetSignals: ["lang:go"], creative: "L" }];
+    expect(runAuction(legacy, ["lang:go"], 9n, 100).winnerId).toBe("L");
+    expect(runAuction(legacy, ["lang:rust"], 9n, 100).winnerId).toBeNull();
+  });
 });
