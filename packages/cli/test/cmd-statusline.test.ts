@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { deriveDeviceKey, createConsent } from "@sponsorline/core";
+import { deriveDeviceKey, createConsent, verifyLog } from "@sponsorline/core";
 import { Store } from "../src/store.js";
 import { runStatusline } from "../src/cmd-statusline.js";
 
@@ -50,6 +50,25 @@ describe("statusline", () => {
     const imp = new Store(appdir).readWitness()[0];
     for (const s of imp.payload.signals) expect(/^(lang|framework|task):/.test(s)).toBe(true);
     expect(JSON.stringify(imp.payload)).not.toContain(projectdir);
+  });
+
+  it("constrains sealed signals to the consent's granted families (narrow consent)", async () => {
+    const narrowApp = mkdtempSync(join(tmpdir(), "sl-narrow-"));
+    const key = deriveDeviceKey(SALT);
+    const store = new Store(narrowApp);
+    const consent = createConsent({ grantedSignals: ["lang"], key, now: 0, ttlMs: 1e12 });
+    store.writeConsent(consent);
+    store.writeInventory([{ id: "a", bidCents: 500, targetSignals: ["lang:ts"], creative: "Try Acme CI" }]);
+    // A project whose manifest WOULD trigger framework detection (react keyword).
+    const proj = mkdtempSync(join(tmpdir(), "sl-rproj-"));
+    writeFileSync(join(proj, "package.json"), '{"dependencies":{"react":"18"}}');
+    await runStatusline({ appDir: narrowApp, salt: SALT, stdin: ctx(proj), now: 1, seed: 42n });
+    const imp = store.readWitness()[0];
+    // Only lang:* may be sealed — framework:* and task:* are outside the grant.
+    for (const s of imp.payload.signals) expect(s.startsWith("lang:")).toBe(true);
+    // The producer's own log must pass consent-bound verification.
+    const r = verifyLog(store.readWitness(), { publicKeyHex: key.publicKeyHex, consent });
+    expect(r.ok).toBe(true);
   });
 
   it("logs ONE billable impression per rotation window, re-displaying the cached line between", async () => {

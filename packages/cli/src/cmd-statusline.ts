@@ -67,23 +67,31 @@ export async function runStatusline(input: StatuslineInput): Promise<StatuslineO
     }
     const vector = buildInterestVector({ manifests, taskCategory: "build", manifestContents });
 
+    // Honor the granted scope at the SOURCE: only signal families the user
+    // consented to may ever be used or sealed. This keeps the producer in
+    // lockstep with consent-bound verify — a narrow consent (e.g. lang-only)
+    // genuinely constrains egress, not just the advisory check downstream.
+    const granted = new Set(consent.payload.grantedSignals);
+    const signals = vector.signals.filter((s) => granted.has(s.slice(0, s.indexOf(":"))));
+    if (signals.length === 0) return { line: plainLine(modelName), exitCode: 0 };
+
     const inventory = store.readInventory();
     const eligible = inventory.filter((b: Bidder) =>
-      b.targetSignals.some((s) => vector.signals.includes(s)),
+      b.targetSignals.some((s) => signals.includes(s)),
     );
     if (eligible.length === 0) return { line: plainLine(modelName), exitCode: 0 };
 
     // Relevance re-rank within eligible set; bias the auction order deterministically.
     const bandit = SolverBandit.fromJSON(input.seed, store.readBandit());
-    const bucket = vector.signals.find((s) => s.startsWith("lang:")) ?? "lang:unknown";
+    const bucket = signals.find((s) => s.startsWith("lang:")) ?? "lang:unknown";
     const ranked = bandit.rank(bucket, eligible.map((b) => b.id));
     const ordered = ranked.map((id) => eligible.find((b) => b.id === id)!) as Bidder[];
 
-    const result = runAuction(ordered, vector.signals, input.seed, RESERVE_CENTS);
+    const result = runAuction(ordered, signals, input.seed, RESERVE_CENTS);
     if (!result.winnerId) return { line: plainLine(modelName), exitCode: 0 };
 
     const imp = makeImpression({
-      bidders: ordered, signals: vector.signals, seed: input.seed,
+      bidders: ordered, signals, seed: input.seed,
       reserveCents: RESERVE_CENTS, consentId: consent.payload.id, key, now: input.now,
       prevHash: store.readWitnessTailHash(),
     });
