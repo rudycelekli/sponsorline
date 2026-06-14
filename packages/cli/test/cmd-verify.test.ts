@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { deriveDeviceKey, createConsent, makeImpression, type Bidder } from "@sponsorline/core";
@@ -18,6 +18,7 @@ beforeEach(() => {
   writeFileSync(join(appdir, "salt"), SALT);
   const key = deriveDeviceKey(SALT);
   const store = new Store(appdir);
+  store.writePubKey(key.publicKeyHex);
   store.writeConsent(createConsent({ grantedSignals: ["lang"], key, now: 0, ttlMs: 1e12 }));
   store.writeInventory(inv);
   // Append as the real statusline path does: each entry chains off the current head.
@@ -46,6 +47,19 @@ describe("verify", () => {
   it("returns exit 2 when preconditions are missing (no consent)", async () => {
     const empty = mkdtempSync(join(tmpdir(), "sl-empty-"));
     const r = await runVerify({ appDir: empty, now: 10 });
+    expect(r.exitCode).toBe(2);
+  });
+
+  it("verifies for a stranger with the public key but not the salt", async () => {
+    rmSync(join(appdir, "salt")); // stranger never receives the signing secret
+    const r = await runVerify({ appDir: appdir, now: 10 });
+    expect(r.exitCode).toBe(0);
+    expect(r.report.replayedAuctions).toBe(2);
+  });
+
+  it("returns exit 2 when the public key is missing", async () => {
+    rmSync(join(appdir, "pubkey"));
+    const r = await runVerify({ appDir: appdir, now: 10 });
     expect(r.exitCode).toBe(2);
   });
 });

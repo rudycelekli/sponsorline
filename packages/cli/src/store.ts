@@ -14,6 +14,13 @@ export class Store {
     return existsSync(f) ? (JSON.parse(readFileSync(f, "utf8")) as ConsentRecord) : null;
   }
 
+  // Published trust anchor: the Ed25519 public key. Safe to share; cannot forge seals.
+  writePubKey(hex: string) { writeFileSync(this.p("pubkey"), hex); }
+  readPubKey(): string | null {
+    const f = this.p("pubkey");
+    return existsSync(f) ? readFileSync(f, "utf8").trim() : null;
+  }
+
   writeInventory(items: Bidder[]) { writeFileSync(this.p("inventory.json"), JSON.stringify(items, null, 2)); }
   readInventory(): Bidder[] {
     const f = this.p("inventory.json");

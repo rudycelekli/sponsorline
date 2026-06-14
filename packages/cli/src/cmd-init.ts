@@ -27,6 +27,9 @@ export async function runInit(input: InitInput): Promise<number> {
   const salt = ensureSalt(input.appDir);
   const key = deriveDeviceKey(salt);
   const store = new Store(input.appDir);
+  // Publish the public key as the verification trust anchor. The salt (private-key
+  // seed) stays on-device and is never required to verify.
+  store.writePubKey(key.publicKeyHex);
   store.writeConsent(createConsent({ grantedSignals: DEFAULT_SIGNALS, key, now: input.now, ttlMs: input.ttlMs }));
 
   mkdirSync(dirname(input.settingsPath), { recursive: true });
