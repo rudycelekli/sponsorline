@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync, appendFileSync, existsSync, openSync, closeSync, unlinkSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { chainHash, type Bidder, type ConsentRecord, type Impression } from "@sponsorline/core";
+import { chainHash, type Bidder, type ConsentRecord, type Impression, type PayoutAccount } from "@sponsorline/core";
 
 // A lock older than this is treated as abandoned by a crashed process and stolen.
 const LOCK_STALE_MS = 30_000;
@@ -78,6 +78,16 @@ export class Store {
     return existsSync(f)
       ? (JSON.parse(readFileSync(f, "utf8")) as { developerBalanceCents: number; platformBalanceCents: number; impressionCount: number })
       : { developerBalanceCents: 0, platformBalanceCents: 0, impressionCount: 0 };
+  }
+
+  // Payout account: the device-local cache of KYC state and lifetime amount paid.
+  // It is set by the platform after identity verification and read by the developer
+  // to see how to get paid. It is NOT authority to move money — see core/payout.ts.
+  writePayoutAccount(a: PayoutAccount) { writeFileSync(this.p("payout.json"), JSON.stringify(a, null, 2)); }
+  readPayoutAccount(devicePubKey: string): PayoutAccount {
+    const f = this.p("payout.json");
+    if (!existsSync(f)) return { devicePubKey, kycStatus: "unverified", alreadyPaidCents: 0 };
+    return JSON.parse(readFileSync(f, "utf8")) as PayoutAccount;
   }
 
   writeBandit(state: unknown) { writeFileSync(this.p("bandit.json"), JSON.stringify(state)); }

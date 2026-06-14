@@ -1,7 +1,8 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { validateConsent, type ConsentRecord } from "@sponsorline/core";
+import { validateConsent, type ConsentRecord, type KycStatus } from "@sponsorline/core";
 import { Store } from "./store.js";
+import { runPayout } from "./cmd-payout.js";
 
 // Pilot-diagnostic readiness probe: "is Sponsorline actually wired up on this
 // machine?" Every check degrades gracefully — a malformed local file flips its
@@ -22,10 +23,18 @@ export interface StatusInput {
   cliOnPath: boolean;
 }
 
+export interface PayoutSummary {
+  kycStatus: KycStatus;
+  payableCents: number;
+  eligible: boolean;
+}
+
 export interface StatusResult {
-  ready: boolean;
+  ready: boolean; // ready to EARN (the 4 checks). Payout readiness is separate, below.
   exitCode: number;
   checks: StatusCheck[];
+  payout: PayoutSummary; // informational — getting paid is gated on KYC, not on earning
+  nextStep: string; // the single most useful action to take right now
 }
 
 function checkStatusline(settingsPath: string): StatusCheck {
@@ -81,6 +90,26 @@ function checkInventory(appDir: string): StatusCheck {
   }
 }
 
+// The single most useful next action, computed from the readiness checks first
+// (you cannot earn until you are wired up) and then payout readiness (you cannot get
+// paid until KYC clears). This is the heart of the onboarding flow: a developer should
+// never have to guess what to do next.
+function computeNextStep(checks: StatusCheck[], payout: PayoutSummary): string {
+  const failed = checks.find((c) => !c.ok);
+  if (failed) {
+    switch (failed.name) {
+      case "cli": return "Install sponsorline on your PATH (`npm link` or install globally), then re-run `sponsorline status`.";
+      case "statusline": return "Run `sponsorline init` to wire the status line into your editor.";
+      case "consent": return "Run `sponsorline init` to grant consent and start earning.";
+      case "inventory": return "You're wired up. No sponsors are available yet — nothing to do; your status line earns as inventory arrives.";
+    }
+  }
+  // Fully wired and earning. Steer toward getting paid.
+  if (payout.eligible) return `You're earning and eligible for payout — withdraw your ${payout.payableCents}c balance.`;
+  if (payout.kycStatus !== "verified" && payout.payableCents > 0) return "You're earning. Verify your identity (`sponsorline payout`) to enable withdrawals.";
+  return "You're earning. Run `sponsorline earnings` to see your balance.";
+}
+
 export function runStatus(input: StatusInput): StatusResult {
   const checks: StatusCheck[] = [
     {
@@ -93,5 +122,8 @@ export function runStatus(input: StatusInput): StatusResult {
     checkInventory(input.appDir),
   ];
   const ready = checks.every((c) => c.ok);
-  return { ready, exitCode: ready ? 0 : 1, checks };
+  const p = runPayout({ appDir: input.appDir, salt: input.salt });
+  const payout: PayoutSummary = { kycStatus: p.kycStatus, payableCents: p.payableCents, eligible: p.eligible };
+  const nextStep = computeNextStep(checks, payout);
+  return { ready, exitCode: ready ? 0 : 1, checks, payout, nextStep };
 }

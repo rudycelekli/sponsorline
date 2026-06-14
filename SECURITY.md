@@ -64,8 +64,12 @@ Summary of what is and is not in scope:
   plausible low-volume receipt. Screening raises the cost of farming; the final unique-identity
   gate belongs at payout-time KYC (e.g. Stripe Connect identity), not in this layer. We do not
   claim to solve it here.
-- **Money movement.** Advertiser billing and developer payouts are deliberately not yet wired;
-  they require KYC, tax handling, and explicit operator authorization.
+- **Live money movement.** Developer payouts have a built, tested *gate* (`payout.ts`): money
+  may be authorized only when KYC is verified, a payout account is connected, the amount is in
+  range, **and** an explicit per-execution operator-authorization flag is set. The only shipped
+  gateway is a dry-run that moves no real money; a live Stripe Connect gateway (with real keys)
+  is intentionally not built here, so live money cannot move implicitly. Advertiser billing is
+  likewise not yet wired.
 
 ## Reporting a vulnerability
 

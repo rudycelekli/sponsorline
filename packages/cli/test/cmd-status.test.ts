@@ -66,4 +66,22 @@ describe("runStatus", () => {
     expect(r.checks.find((c) => c.name === "statusline")!.ok).toBe(false);
     expect(r.checks.find((c) => c.name === "inventory")!.ok).toBe(false);
   });
+
+  it("nextStep points at `sponsorline init` when consent is missing", () => {
+    const r = runStatus({ appDir, salt: SALT, settingsPath, now: 1000, cliOnPath: true });
+    expect(r.nextStep).toMatch(/sponsorline init/);
+  });
+
+  it("when fully wired and earning, nextStep steers toward identity verification to get paid", () => {
+    seedConsent(1e12);
+    new Store(appDir).writeInventory([{ id: "x", bidCents: 200, targetSignals: ["lang:ts"], creative: "X" }]);
+    new Store(appDir).writeLedger({ developerBalanceCents: 5000, platformBalanceCents: 5000, impressionCount: 1 });
+    writeFileSync(settingsPath, JSON.stringify({ statusLine: { type: "command", command: "sponsorline statusline" } }));
+
+    const r = runStatus({ appDir, salt: SALT, settingsPath, now: 1000, cliOnPath: true });
+    expect(r.ready).toBe(true);
+    expect(r.payout.kycStatus).toBe("unverified");
+    expect(r.payout.payableCents).toBe(5000);
+    expect(r.nextStep).toMatch(/verify your identity/i);
+  });
 });

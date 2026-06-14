@@ -11,6 +11,7 @@ import { runEarnings } from "./cmd-earnings.js";
 import { runFeedback } from "./cmd-feedback.js";
 import { runStatus } from "./cmd-status.js";
 import { runReceipt } from "./cmd-receipt.js";
+import { runPayout } from "./cmd-payout.js";
 import { execSync } from "node:child_process";
 
 function readStdin(): Promise<string> {
@@ -51,7 +52,22 @@ export async function main(argv: string[]): Promise<number> {
 
   switch (cmd) {
     case "init": {
-      return runInit({ appDir: dir, settingsPath: ccSettingsPath(), acceptDefaults: argv.includes("--accept-defaults"), now, ttlMs: 1000 * 60 * 60 * 24 * 365 });
+      const code = await runInit({ appDir: dir, settingsPath: ccSettingsPath(), acceptDefaults: argv.includes("--accept-defaults"), now, ttlMs: 1000 * 60 * 60 * 24 * 365 });
+      // Onboarding confirmation: never leave a developer guessing what just happened or
+      // what to do next. The status line is now live; point at the verify-and-earn path.
+      if (code === 0 && !json) {
+        process.stdout.write(
+          "Sponsorline is set up. Your status line now earns, and it never sees your code.\n" +
+            "Next:\n" +
+            "  1. Use your editor normally — sponsored lines appear in your status bar.\n" +
+            "  2. `sponsorline status`   check everything is wired up\n" +
+            "  3. `sponsorline verify`   prove zero code egress + replayable auctions\n" +
+            "  4. `sponsorline earnings` see what you've accrued\n" +
+            "  5. `sponsorline payout`   how to get paid (identity verification required)\n" +
+            "Opt out anytime with `sponsorline off`.\n",
+        );
+      }
+      return code;
     }
     case "statusline": {
       const out = await runStatusline({ appDir: dir, salt: salt(dir), stdin: await readStdin(), now, seed: BigInt(now) });
@@ -93,11 +109,26 @@ export async function main(argv: string[]): Promise<number> {
       } else {
         process.stdout.write(`Sponsorline: ${out.ready ? "READY" : "NOT READY"}\n`);
         for (const c of out.checks) process.stdout.write(`  ${c.ok ? "✓" : "✗"} ${c.name}: ${c.detail}\n`);
+        process.stdout.write(`Next: ${out.nextStep}\n`);
+      }
+      return out.exitCode;
+    }
+    case "payout": {
+      // Read-only developer payout readiness. Never moves money — it reports earnings,
+      // KYC state, and the single next step to get paid.
+      const out = runPayout({ appDir: dir, salt: salt(dir) });
+      if (json) {
+        process.stdout.write(JSON.stringify(out) + "\n");
+      } else {
+        process.stdout.write(
+          `Payable: ${out.payableCents}c | KYC: ${out.kycStatus} | account: ${out.connected ? "connected" : "not connected"} | eligible: ${out.eligible}\n` +
+            `Next: ${out.nextStep}\n`,
+        );
       }
       return out.exitCode;
     }
     default:
-      process.stdout.write("Usage: sponsorline <init|statusline|status|receipt|why|earnings|verify|feedback|off> [--json]\n");
+      process.stdout.write("Usage: sponsorline <init|statusline|status|receipt|why|earnings|verify|feedback|payout|off> [--json]\n");
       return cmd ? 2 : 0;
   }
 }
