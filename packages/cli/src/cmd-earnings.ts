@@ -12,7 +12,15 @@ export interface EarningsOutput {
 export async function runEarnings(input: EarningsInput): Promise<EarningsOutput> {
   const store = new Store(input.appDir);
   const state = store.readLedger();
-  const log = store.readWitness();
+  // A corrupt/truncated witness log must not crash earnings (R10/R17 contract);
+  // it is also surfaced through the MCP earnings_summary tool. If the proof log
+  // is unreadable, report the recorded ledger balance but honestly mark it
+  // unreconciled — you cannot reconcile earnings against a log you cannot read.
+  let log;
+  try { log = store.readWitness(); }
+  catch {
+    return { exitCode: 0, developerBalanceCents: state.developerBalanceCents, impressionCount: state.impressionCount, reconciled: false };
+  }
   const ledger = new Ledger();
   ledger.developerBalanceCents = state.developerBalanceCents;
   ledger.platformBalanceCents = state.platformBalanceCents;

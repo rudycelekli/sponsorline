@@ -69,6 +69,16 @@ describe("init / off", () => {
     expect(r.reason).toBe("revoked");
   });
 
+  it("init fails clearly on malformed settings.json and leaves the file untouched", async () => {
+    const broken = "{ not valid json";
+    writeFileSync(settingsPath, broken);
+    await expect(
+      runInit({ appDir: appdir, settingsPath, acceptDefaults: true, now: 0, ttlMs: 1e12 }),
+    ).rejects.toThrow(/not valid JSON/);
+    // The user's existing (if broken) settings must not be clobbered.
+    expect(readFileSync(settingsPath, "utf8")).toBe(broken);
+  });
+
   it("off never crashes on a malformed settings.json (kill switch still revokes)", async () => {
     await runInit({ appDir: appdir, settingsPath, acceptDefaults: true, now: 0, ttlMs: 1e12 });
     writeFileSync(settingsPath, "{ this is not valid json"); // user hand-edited / mid-write

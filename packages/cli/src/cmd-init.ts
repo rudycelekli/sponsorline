@@ -43,9 +43,20 @@ export async function runInit(input: InitInput): Promise<number> {
   }
 
   mkdirSync(dirname(input.settingsPath), { recursive: true });
-  const settings = existsSync(input.settingsPath)
-    ? (JSON.parse(readFileSync(input.settingsPath, "utf8")) as Record<string, unknown>)
-    : {};
+  let settings: Record<string, unknown> = {};
+  if (existsSync(input.settingsPath)) {
+    // init must merge into the existing Claude Code settings to preserve the
+    // user's other keys. If the file is malformed we must NOT clobber it (that
+    // would destroy their config) and must NOT dump a stack trace on the very
+    // first command — fail with a clear, actionable message and touch nothing.
+    try {
+      settings = JSON.parse(readFileSync(input.settingsPath, "utf8")) as Record<string, unknown>;
+    } catch {
+      throw new Error(
+        `Cannot parse ${input.settingsPath}: it is not valid JSON. Fix or remove that file, then re-run 'sponsorline init'. Your settings were left untouched.`,
+      );
+    }
+  }
   settings.statusLine = { type: "command", command: "sponsorline statusline" };
   writeFileSync(input.settingsPath, JSON.stringify(settings, null, 2));
   return 0;
