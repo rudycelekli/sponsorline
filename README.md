@@ -33,6 +33,12 @@ Raw developer context never leaves your device. The only thing the auction sees 
 
 The witness log is a hash chain: each impression embeds the previous payload's hash. A single Ed25519 signature over the head payload therefore vouches for the entire ordered history, so `verify` costs O(n) cheap hashing plus **one** signature check instead of one check per impression. Verification stays well under the 2-second target even at multi-year volume (≈58ms at 8,760 impressions, ≈158ms at 26,280). Any insert, delete, reorder, or edit of an entry breaks a chain link.
 
+## What verification does — and doesn't — prove
+
+`sponsorline verify` runs only against the **published public key** (`pubkey`); the signing secret (`salt`) never leaves your device, so a verifier can check everything without being able to forge anything. Under that key, verify proves the log is internally consistent: every auction replays to the recorded outcome, every impression carries only allowlisted signals **within your granted consent scope and validity window**, and the hash chain is unbroken.
+
+What it does **not** prove on its own is *whose* device produced the log. The public key travels in the same bundle as the witness, so a third party could substitute their own key and re-sign a fabricated log — it would verify against *that* key. To bind the key to you, publish your `pubkey` through a channel the verifier already trusts (your repo, your site, a signed release). Verify then proves authenticity-of-origin, not just internal consistency. This is the standard public-key trust-anchor model, stated plainly.
+
 ## Architecture
 
 `@sponsorline/core` (pure substrate) → `sponsorline` CLI (the official statusLine command + init/why/earnings/verify/off) → `@sponsorline/mcp` (advertiser/enterprise seam). Local JSONL witness log; Ed25519 seals; deterministic second-price auction. See `docs/adr/ADR-0001-sponsorline-v0.1.md`.
