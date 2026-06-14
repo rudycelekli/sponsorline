@@ -19,7 +19,8 @@
         "sponsorline.command": {
           "type": "string",
           "default": "sponsorline",
-          "description": "Path to the sponsorline CLI binary (the shared on-device engine)."
+          "scope": "machine",
+          "description": "Path to the sponsorline CLI binary (the shared on-device engine). Machine-scoped: a workspace cannot override which binary is spawned."
         },
         "sponsorline.modelName": {
           "type": "string",

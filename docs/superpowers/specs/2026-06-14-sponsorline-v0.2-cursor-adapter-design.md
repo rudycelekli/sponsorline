@@ -48,6 +48,12 @@ No new egress. The extension only spawns the local CLI; all witness payloads are
 produced by that engine and remain bench-verified at 0 code/path bytes. No `fetch`,
 `http`, `net`, or sockets anywhere in the package.
 
+`sponsorline.command` (the binary path the extension spawns on activation) is
+declared **`machine`-scoped**, so a malicious workspace's `.vscode/settings.json`
+cannot repoint it at an arbitrary executable — only the user's own/machine settings
+choose which binary runs. The cosmetic settings (`modelName`, `refreshSeconds`) stay
+workspace-overridable.
+
 ## Testing
 
 `engine.ts` is tested with an injected fake runner (contract shape; sponsor-line
