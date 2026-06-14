@@ -30,7 +30,14 @@ export async function runInit(input: InitInput): Promise<number> {
   // Publish the public key as the verification trust anchor. The salt (private-key
   // seed) stays on-device and is never required to verify.
   store.writePubKey(key.publicKeyHex);
-  store.writeConsent(createConsent({ grantedSignals: DEFAULT_SIGNALS, key, now: input.now, ttlMs: input.ttlMs }));
+  // Consent is minted exactly once. Re-running init must never overwrite an
+  // existing consent: doing so would orphan the prior witness history (its
+  // consentId would no longer match) and — worse — silently resurrect ads the
+  // user had revoked via `off`. Re-granting after revoke is a deliberate future
+  // action, not a side effect of re-init.
+  if (!store.readConsent()) {
+    store.writeConsent(createConsent({ grantedSignals: DEFAULT_SIGNALS, key, now: input.now, ttlMs: input.ttlMs }));
+  }
 
   mkdirSync(dirname(input.settingsPath), { recursive: true });
   const settings = existsSync(input.settingsPath)

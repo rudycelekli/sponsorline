@@ -43,6 +43,25 @@ describe("init / off", () => {
     expect(settings.statusLine).toBeDefined();
   });
 
+  it("preserves the existing consent (stable id) across re-init", async () => {
+    await runInit({ appDir: appdir, settingsPath, acceptDefaults: true, now: 0, ttlMs: 1e12 });
+    const id1 = new Store(appdir).readConsent()!.payload.id;
+    await runInit({ appDir: appdir, settingsPath, acceptDefaults: true, now: 50, ttlMs: 1e12 });
+    const id2 = new Store(appdir).readConsent()!.payload.id;
+    expect(id2).toBe(id1); // re-init must not orphan prior witness history
+  });
+
+  it("does not resurrect consent after off (re-init must not silently re-enable ads)", async () => {
+    await runInit({ appDir: appdir, settingsPath, acceptDefaults: true, now: 0, ttlMs: 1e12 });
+    await runOff({ appDir: appdir, settingsPath, now: 10 });
+    await runInit({ appDir: appdir, settingsPath, acceptDefaults: true, now: 20, ttlMs: 1e12 });
+    const store = new Store(appdir);
+    const key = deriveDeviceKey(readFileSync(join(appdir, "salt"), "utf8"));
+    const r = validateConsent(store.readConsent()!, { publicKeyHex: key.publicKeyHex, now: 21 });
+    expect(r.valid).toBe(false);
+    expect(r.reason).toBe("revoked");
+  });
+
   it("off revokes consent and removes the statusLine block immediately", async () => {
     await runInit({ appDir: appdir, settingsPath, acceptDefaults: true, now: 0, ttlMs: 1e12 });
     const code = await runOff({ appDir: appdir, settingsPath, now: 10 });

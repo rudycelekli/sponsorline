@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync, rmSync, copyFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { deriveDeviceKey, createConsent, makeImpression, type Bidder } from "@sponsorline/core";
@@ -63,5 +63,20 @@ describe("verify", () => {
     rmSync(join(appdir, "pubkey"));
     const r = await runVerify({ appDir: appdir, now: 10 });
     expect(r.exitCode).toBe(2);
+  });
+
+  it("verifies from a true clean clone: only shareable artifacts, no salt or inventory", async () => {
+    // Simulate a stranger cloning the published proof bundle into a fresh dir.
+    // They receive ONLY the trust anchor + consent + witness — never the salt
+    // (signing secret) and never the mutable inventory (replay is intrinsic).
+    const clone = mkdtempSync(join(tmpdir(), "sl-clone-"));
+    for (const f of ["pubkey", "consent.json", "witness.jsonl"]) {
+      copyFileSync(join(appdir, f), join(clone, f));
+    }
+    expect(existsSync(join(clone, "salt"))).toBe(false);
+    expect(existsSync(join(clone, "inventory.json"))).toBe(false);
+    const r = await runVerify({ appDir: clone, now: 10 });
+    expect(r.exitCode).toBe(0);
+    expect(r.report.replayedAuctions).toBe(2);
   });
 });
