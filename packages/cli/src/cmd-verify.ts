@@ -26,8 +26,7 @@ export async function runVerify(input: VerifyInput): Promise<VerifyOutput> {
   }
 
   const log = store.readWitness();
-  const inventory = store.readInventory();
-  const res = verifyLog(log, { publicKeyHex: key.publicKeyHex, bidders: inventory });
+  const res = verifyLog(log, { publicKeyHex: key.publicKeyHex });
   if (res.ok) return { exitCode: 0, report: res };
   return { exitCode: 1, report: res };
 }

@@ -63,4 +63,29 @@ describe("witness log", () => {
     });
     expect(imp.payload.clearingPriceCents).toBe(300);
   });
+
+  it("seals the full bidder snapshot so settled impressions verify forever", () => {
+    const imp = makeImpression({
+      bidders, signals: ["lang:ts"], seed: 1n, reserveCents: 100, consentId: "c1", key,
+    });
+    // The snapshot (incl. losing bids) lives inside the sealed payload — a proper
+    // Vickrey receipt. Replay must NOT depend on the live inventory.
+    expect(imp.payload.bidders).toHaveLength(2);
+    const r = verifyLog([imp], { publicKeyHex: key.publicKeyHex });
+    expect(r.ok).toBe(true);
+    expect(r.replayedAuctions).toBe(1);
+  });
+
+  it("detects a forged winner via intrinsic snapshot replay (even if re-sealed)", () => {
+    const imp = makeImpression({
+      bidders, signals: ["lang:ts"], seed: 1n, reserveCents: 100, consentId: "c1", key,
+    });
+    // Attacker rewrites the winner and re-seals with the device key. The seal is
+    // valid, but replaying the SEALED snapshot exposes the lie.
+    const forged = { ...imp.payload, winnerId: "a", winningCreative: "A" };
+    const resealed = seal(forged, key);
+    const r = verifyLog([{ payload: forged, sig: resealed.sig }], { publicKeyHex: key.publicKeyHex });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("replay-mismatch");
+  });
 });

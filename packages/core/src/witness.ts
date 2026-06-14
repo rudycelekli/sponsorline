@@ -12,7 +12,7 @@ export interface ImpressionPayload {
   winnerId: string | null;
   winningCreative: string | null;
   clearingPriceCents: number;
-  bidderIds: string[]; // ids present at auction time (for replay shape)
+  bidders: Bidder[]; // full snapshot present at auction time — a self-contained Vickrey receipt
 }
 
 export type Impression = Sealed<ImpressionPayload>;
@@ -39,14 +39,18 @@ export function makeImpression(input: MakeImpressionInput): Impression {
     winnerId: result.winnerId,
     winningCreative: result.winningCreative,
     clearingPriceCents: result.clearingPriceCents,
-    bidderIds: input.bidders.map((b) => b.id),
+    bidders: input.bidders.map((b) => ({
+      id: b.id,
+      bidCents: b.bidCents,
+      targetSignals: [...b.targetSignals],
+      creative: b.creative,
+    })),
   };
   return seal(payload, input.key);
 }
 
 export interface VerifyOpts {
   publicKeyHex: string;
-  bidders?: Bidder[]; // optional: full replay against current inventory
 }
 
 export interface VerifyResult {
@@ -68,19 +72,20 @@ export function verifyLog(log: Impression[], opts: VerifyOpts): VerifyResult {
         return { ok: false, replayedAuctions: replayed, reason: "privacy-violation", failedIndex: i };
       }
     }
-    if (opts.bidders) {
-      const r = runAuction(
-        opts.bidders.filter((b) => entry.payload.bidderIds.includes(b.id)),
-        entry.payload.signals,
-        BigInt(entry.payload.seed),
-        entry.payload.reserveCents,
-      );
-      if (
-        r.winnerId !== entry.payload.winnerId ||
-        r.clearingPriceCents !== entry.payload.clearingPriceCents
-      ) {
-        return { ok: false, replayedAuctions: replayed, reason: "replay-mismatch", failedIndex: i };
-      }
+    // Intrinsic replay: re-run the auction from the SEALED snapshot, never from the
+    // mutable live inventory. A settled impression is thus permanently self-verifying.
+    const r = runAuction(
+      entry.payload.bidders,
+      entry.payload.signals,
+      BigInt(entry.payload.seed),
+      entry.payload.reserveCents,
+    );
+    if (
+      r.winnerId !== entry.payload.winnerId ||
+      r.clearingPriceCents !== entry.payload.clearingPriceCents ||
+      r.winningCreative !== entry.payload.winningCreative
+    ) {
+      return { ok: false, replayedAuctions: replayed, reason: "replay-mismatch", failedIndex: i };
     }
     replayed++;
   }
