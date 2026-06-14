@@ -87,6 +87,30 @@ describe("statusline", () => {
     expect(new Store(appdir).readWitness()).toHaveLength(2);
   });
 
+  it("does not fork the witness chain or bill while another impression holds the lock", async () => {
+    // Simulate a concurrent statusline call already inside the critical section.
+    const held = new Store(appdir);
+    expect(held.tryLock()).toBe(true);
+    try {
+      const out = await runStatusline({ appDir: appdir, salt: SALT, stdin: ctx(projectdir), now: 1, seed: 42n });
+      // Degrades gracefully (no cached render yet → plain) and logs NOTHING:
+      // no second append means no same-prevHash fork and no double-bill.
+      expect(out.exitCode).toBe(0);
+      expect(out.line).not.toContain("Sponsored");
+      expect(new Store(appdir).readWitness()).toHaveLength(0);
+      expect(new Store(appdir).readLedger().impressionCount).toBe(0);
+    } finally {
+      held.unlock();
+    }
+    // Once the lock is free the chain advances normally and verifies clean.
+    const out2 = await runStatusline({ appDir: appdir, salt: SALT, stdin: ctx(projectdir), now: 2, seed: 42n });
+    expect(out2.line).toContain("Sponsored");
+    const key = deriveDeviceKey(SALT);
+    const log = new Store(appdir).readWitness();
+    expect(log).toHaveLength(1);
+    expect(verifyLog(log, { publicKeyHex: key.publicKeyHex, consent: new Store(appdir).readConsent()! }).ok).toBe(true);
+  });
+
   it("re-renders the cached line with the CURRENT model name (not a stale one)", async () => {
     const rotateMs = 1000;
     await runStatusline({ appDir: appdir, salt: SALT, stdin: ctx(projectdir), now: 0, seed: 42n, rotateMs });

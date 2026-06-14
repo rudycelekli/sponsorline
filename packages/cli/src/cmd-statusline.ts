@@ -59,59 +59,79 @@ export async function runStatusline(input: StatuslineInput): Promise<StatuslineO
       return { line: sponsorLine(modelName, render.lastCreative), exitCode: 0 };
     }
 
-    const present = new Set(readdirSync(cwd));
-    const manifests = MANIFESTS.filter((m) => present.has(m));
-    const manifestContents: Record<string, string> = {};
-    for (const m of manifests) {
-      try { manifestContents[m] = readFileSync(join(cwd, m), "utf8").slice(0, 4096); } catch { /* transient */ }
+    // A new billable impression mutates the witness hash chain AND the ledger.
+    // Guard that critical section with an exclusive lock: concurrent statusline
+    // invocations must not read the same tail hash and fork the chain (which would
+    // break verify for an honest user) or double-bill. A caller that cannot acquire
+    // degrades gracefully — show the cached/plain line, log nothing.
+    if (!store.tryLock()) {
+      return { line: render ? sponsorLine(modelName, render.lastCreative) : plainLine(modelName), exitCode: 0 };
     }
-    const vector = buildInterestVector({ manifests, taskCategory: "build", manifestContents });
+    try {
+      // Re-check rotation after acquiring: another process may have just logged the
+      // window's impression while we waited. If so, display its creative and append
+      // nothing — this is what makes the impression exactly-once under concurrency.
+      const fresh = store.readRenderState();
+      if (fresh && input.now - fresh.lastImpressionAt < rotateMs) {
+        return { line: sponsorLine(modelName, fresh.lastCreative), exitCode: 0 };
+      }
 
-    // Honor the granted scope at the SOURCE: only signal families the user
-    // consented to may ever be used or sealed. This keeps the producer in
-    // lockstep with consent-bound verify — a narrow consent (e.g. lang-only)
-    // genuinely constrains egress, not just the advisory check downstream.
-    const granted = new Set(consent.payload.grantedSignals);
-    const signals = vector.signals.filter((s) => granted.has(s.slice(0, s.indexOf(":"))));
-    if (signals.length === 0) return { line: plainLine(modelName), exitCode: 0 };
+      const present = new Set(readdirSync(cwd));
+      const manifests = MANIFESTS.filter((m) => present.has(m));
+      const manifestContents: Record<string, string> = {};
+      for (const m of manifests) {
+        try { manifestContents[m] = readFileSync(join(cwd, m), "utf8").slice(0, 4096); } catch { /* transient */ }
+      }
+      const vector = buildInterestVector({ manifests, taskCategory: "build", manifestContents });
 
-    const inventory = store.readInventory();
-    const eligible = inventory.filter((b: Bidder) =>
-      b.targetSignals.some((s) => signals.includes(s)),
-    );
-    if (eligible.length === 0) return { line: plainLine(modelName), exitCode: 0 };
+      // Honor the granted scope at the SOURCE: only signal families the user
+      // consented to may ever be used or sealed. This keeps the producer in
+      // lockstep with consent-bound verify — a narrow consent (e.g. lang-only)
+      // genuinely constrains egress, not just the advisory check downstream.
+      const granted = new Set(consent.payload.grantedSignals);
+      const signals = vector.signals.filter((s) => granted.has(s.slice(0, s.indexOf(":"))));
+      if (signals.length === 0) return { line: plainLine(modelName), exitCode: 0 };
 
-    // Relevance re-rank within eligible set; bias the auction order deterministically.
-    const bandit = SolverBandit.fromJSON(input.seed, store.readBandit());
-    const bucket = signals.find((s) => s.startsWith("lang:")) ?? "lang:unknown";
-    const ranked = bandit.rank(bucket, eligible.map((b) => b.id));
-    const ordered = ranked.map((id) => eligible.find((b) => b.id === id)!) as Bidder[];
+      const inventory = store.readInventory();
+      const eligible = inventory.filter((b: Bidder) =>
+        b.targetSignals.some((s) => signals.includes(s)),
+      );
+      if (eligible.length === 0) return { line: plainLine(modelName), exitCode: 0 };
 
-    const result = runAuction(ordered, signals, input.seed, RESERVE_CENTS);
-    if (!result.winnerId) return { line: plainLine(modelName), exitCode: 0 };
+      // Relevance re-rank within eligible set; bias the auction order deterministically.
+      const bandit = SolverBandit.fromJSON(input.seed, store.readBandit());
+      const bucket = signals.find((s) => s.startsWith("lang:")) ?? "lang:unknown";
+      const ranked = bandit.rank(bucket, eligible.map((b) => b.id));
+      const ordered = ranked.map((id) => eligible.find((b) => b.id === id)!) as Bidder[];
 
-    const imp = makeImpression({
-      bidders: ordered, signals, seed: input.seed,
-      reserveCents: RESERVE_CENTS, consentId: consent.payload.id, key, now: input.now,
-      prevHash: store.readWitnessTailHash(),
-    });
-    store.appendWitness(imp);
+      const result = runAuction(ordered, signals, input.seed, RESERVE_CENTS);
+      if (!result.winnerId) return { line: plainLine(modelName), exitCode: 0 };
 
-    const ledgerState = store.readLedger();
-    const ledger = new Ledger();
-    ledger.developerBalanceCents = ledgerState.developerBalanceCents;
-    ledger.platformBalanceCents = ledgerState.platformBalanceCents;
-    ledger.impressionCount = ledgerState.impressionCount;
-    ledger.accrue(result.clearingPriceCents);
-    store.writeLedger({
-      developerBalanceCents: ledger.developerBalanceCents,
-      platformBalanceCents: ledger.platformBalanceCents,
-      impressionCount: ledger.impressionCount,
-    });
+      const imp = makeImpression({
+        bidders: ordered, signals, seed: input.seed,
+        reserveCents: RESERVE_CENTS, consentId: consent.payload.id, key, now: input.now,
+        prevHash: store.readWitnessTailHash(),
+      });
+      store.appendWitness(imp);
 
-    store.writeRenderState({ lastImpressionAt: input.now, lastCreative: result.winningCreative! });
+      const ledgerState = store.readLedger();
+      const ledger = new Ledger();
+      ledger.developerBalanceCents = ledgerState.developerBalanceCents;
+      ledger.platformBalanceCents = ledgerState.platformBalanceCents;
+      ledger.impressionCount = ledgerState.impressionCount;
+      ledger.accrue(result.clearingPriceCents);
+      store.writeLedger({
+        developerBalanceCents: ledger.developerBalanceCents,
+        platformBalanceCents: ledger.platformBalanceCents,
+        impressionCount: ledger.impressionCount,
+      });
 
-    return { line: sponsorLine(modelName, result.winningCreative!), exitCode: 0 };
+      store.writeRenderState({ lastImpressionAt: input.now, lastCreative: result.winningCreative! });
+
+      return { line: sponsorLine(modelName, result.winningCreative!), exitCode: 0 };
+    } finally {
+      store.unlock();
+    }
   } catch {
     return { line: plainLine(modelName), exitCode: 0 };
   }

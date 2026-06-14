@@ -197,3 +197,17 @@ The invariant that makes the whole thing enterprise-adoptable — **raw develope
 - **Determinism:** integer/fixed-point bid math + seeded PRNG (e.g., a small splitmix64) → reproducible auctions and stable witness hashes.
 - **Storage:** local JSONL witness log + JSON consent/ledger under an OS-appropriate app dir; no database in v0.1.
 - **Install:** single `npx sponsorline` front door; zero config for the happy path beyond the consent wizard.
+
+---
+
+## 10. Build-Time Refinements (addendum — supersedes earlier sections where noted)
+
+These refinements were made during implementation. They strengthen the trust model without changing the locked scope (B) or any invariant. Listed append-only so the original decision record stays intact.
+
+- **Public-key-only verification (supersedes §4.1/§4.3 verify signature).** The local `salt` is the Ed25519 **private-key seed** and never leaves the device. `init` publishes a `pubkey` file as the verification trust anchor. `verifyLog` now takes `{ publicKeyHex, consent }` (not the bare `verifyLog(log)` shown in §4.3): a stranger verifies from a clean clone containing only `pubkey` + `consent.json` + `witness.jsonl` — never the signing secret, never the mutable inventory (replay is intrinsic to each sealed impression). What this proves: internal consistency under the published key. What it does **not** prove on its own: authenticity-of-origin — the publisher must anchor `pubkey` through an already-trusted channel (repo/site/signed release). Stated plainly in the README.
+- **Consent-binding in verify (R6).** Every impression is bound to the signed consent by `id`, granted signal families, and validity window. Revocation/expiry does not retroactively fail impressions logged while consent was live; only signals or timestamps outside the consent fail. Reasons: `consent-mismatch` / `consent-scope` / `consent-window`.
+- **Hash-chained witness log (R3).** Each payload embeds the previous payload's hash; one Ed25519 check over the head transitively authenticates the whole ordered history → O(n) cheap hashing + one signature check. Any insert/delete/reorder/edit breaks a chain link.
+- **Producer-side scope enforcement (R8).** `statusline` filters the interest vector to granted families *before* sealing; an empty granted set yields the plain official line. Consent scope is enforced at production, not only at verification.
+- **Lifecycle safety (R7).** `init` is idempotent: re-running never overwrites existing consent (which would orphan witness history) and never resurrects consent revoked via `off`.
+- **Robustness + key hygiene (R10/R11).** A malformed/truncated witness log fails `verify` cleanly (exit 1, never crashes). The `salt` is written `0600` (owner-only) to prevent local forgery.
+- **Honest claims (R9/R12).** The benchmark computes the consent-gating metric via `validateConsent` (no hardcoded pass); the README de-brittles the latency claim (deterministic invariants are machine-independent; latency is a reference-run figure) and states the trust-anchor limitation explicitly.

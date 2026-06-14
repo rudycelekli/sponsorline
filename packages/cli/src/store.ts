@@ -1,12 +1,43 @@
-import { mkdirSync, readFileSync, writeFileSync, appendFileSync, existsSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, appendFileSync, existsSync, openSync, closeSync, unlinkSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { chainHash, type Bidder, type ConsentRecord, type Impression } from "@sponsorline/core";
+
+// A lock older than this is treated as abandoned by a crashed process and stolen.
+const LOCK_STALE_MS = 30_000;
 
 export class Store {
   constructor(private dir: string) {
     mkdirSync(dir, { recursive: true });
   }
   private p(name: string) { return join(this.dir, name); }
+
+  // Best-effort exclusive lock guarding the witness-append critical section. The
+  // witness log is a hash chain: two concurrent statusline invocations would read
+  // the SAME tail hash and both append, forking the chain (breaking verify) and
+  // double-billing the ledger. Atomic O_EXCL create is the cross-platform
+  // primitive. Non-blocking by design — a caller that cannot acquire degrades to
+  // the cached/plain line and logs nothing, so the editor never stalls. Staleness
+  // uses real wall-clock (lock liveness is operational, independent of the
+  // deterministic logical clock used for auctions).
+  tryLock(): boolean {
+    const f = this.p("lock");
+    try {
+      closeSync(openSync(f, "wx"));
+      return true;
+    } catch {
+      try {
+        if (Date.now() - statSync(f).mtimeMs > LOCK_STALE_MS) {
+          unlinkSync(f);
+          closeSync(openSync(f, "wx"));
+          return true;
+        }
+      } catch { /* lost the steal race, or the holder released it — not acquired */ }
+      return false;
+    }
+  }
+  unlock() {
+    try { unlinkSync(this.p("lock")); } catch { /* already released */ }
+  }
 
   writeConsent(c: ConsentRecord) { writeFileSync(this.p("consent.json"), JSON.stringify(c, null, 2)); }
   readConsent(): ConsentRecord | null {
