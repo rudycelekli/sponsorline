@@ -1,0 +1,45 @@
+import { mkdirSync, readFileSync, writeFileSync, appendFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import type { Bidder, ConsentRecord, Impression } from "@sponsorline/core";
+
+export class Store {
+  constructor(private dir: string) {
+    mkdirSync(dir, { recursive: true });
+  }
+  private p(name: string) { return join(this.dir, name); }
+
+  writeConsent(c: ConsentRecord) { writeFileSync(this.p("consent.json"), JSON.stringify(c, null, 2)); }
+  readConsent(): ConsentRecord | null {
+    const f = this.p("consent.json");
+    return existsSync(f) ? (JSON.parse(readFileSync(f, "utf8")) as ConsentRecord) : null;
+  }
+
+  writeInventory(items: Bidder[]) { writeFileSync(this.p("inventory.json"), JSON.stringify(items, null, 2)); }
+  readInventory(): Bidder[] {
+    const f = this.p("inventory.json");
+    return existsSync(f) ? (JSON.parse(readFileSync(f, "utf8")) as Bidder[]) : [];
+  }
+
+  appendWitness(imp: Impression) { appendFileSync(this.p("witness.jsonl"), JSON.stringify(imp) + "\n"); }
+  readWitness(): Impression[] {
+    const f = this.p("witness.jsonl");
+    if (!existsSync(f)) return [];
+    return readFileSync(f, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as Impression);
+  }
+
+  writeLedger(state: { developerBalanceCents: number; platformBalanceCents: number; impressionCount: number }) {
+    writeFileSync(this.p("ledger.json"), JSON.stringify(state, null, 2));
+  }
+  readLedger() {
+    const f = this.p("ledger.json");
+    return existsSync(f)
+      ? (JSON.parse(readFileSync(f, "utf8")) as { developerBalanceCents: number; platformBalanceCents: number; impressionCount: number })
+      : { developerBalanceCents: 0, platformBalanceCents: 0, impressionCount: 0 };
+  }
+
+  writeBandit(state: unknown) { writeFileSync(this.p("bandit.json"), JSON.stringify(state)); }
+  readBandit(): Record<string, Record<string, { alpha: number; beta: number }>> {
+    const f = this.p("bandit.json");
+    return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : {};
+  }
+}

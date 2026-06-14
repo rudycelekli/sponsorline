@@ -1,0 +1,66 @@
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { readFileSync, existsSync } from "node:fs";
+import { appDir } from "./paths.js";
+import { runStatusline } from "./cmd-statusline.js";
+import { runInit } from "./cmd-init.js";
+import { runOff } from "./cmd-off.js";
+import { runVerify } from "./cmd-verify.js";
+import { runWhy } from "./cmd-why.js";
+import { runEarnings } from "./cmd-earnings.js";
+
+function readStdin(): Promise<string> {
+  return new Promise((resolve) => {
+    let data = "";
+    if (process.stdin.isTTY) return resolve("");
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (c) => (data += c));
+    process.stdin.on("end", () => resolve(data));
+    setTimeout(() => resolve(data), 200);
+  });
+}
+
+function ccSettingsPath(): string {
+  return join(homedir(), ".claude", "settings.json");
+}
+function salt(dir: string): string {
+  const p = join(dir, "salt");
+  return existsSync(p) ? readFileSync(p, "utf8") : "uninitialized";
+}
+
+export async function main(argv: string[]): Promise<number> {
+  const cmd = argv[0];
+  const json = argv.includes("--json");
+  const dir = appDir();
+  const now = Date.now();
+
+  switch (cmd) {
+    case "init": {
+      return runInit({ appDir: dir, settingsPath: ccSettingsPath(), acceptDefaults: argv.includes("--accept-defaults"), now, ttlMs: 1000 * 60 * 60 * 24 * 365 });
+    }
+    case "statusline": {
+      const out = await runStatusline({ appDir: dir, salt: salt(dir), stdin: await readStdin(), now, seed: BigInt(now) });
+      process.stdout.write(out.line + "\n");
+      return out.exitCode;
+    }
+    case "off": return runOff({ appDir: dir, settingsPath: ccSettingsPath(), now });
+    case "why": {
+      const out = await runWhy({ appDir: dir });
+      process.stdout.write((json ? JSON.stringify(out) : out.explanation ?? "No impressions yet.") + "\n");
+      return out.exitCode;
+    }
+    case "earnings": {
+      const out = await runEarnings({ appDir: dir });
+      process.stdout.write((json ? JSON.stringify(out) : `Developer balance: ${out.developerBalanceCents}c over ${out.impressionCount} impressions (reconciled: ${out.reconciled})`) + "\n");
+      return out.exitCode;
+    }
+    case "verify": {
+      const out = await runVerify({ appDir: dir, now });
+      process.stdout.write((json ? JSON.stringify(out.report) : `verify: ${out.report.ok ? "OK" : "FAIL — " + out.report.reason} (${out.report.replayedAuctions} auctions replayed)`) + "\n");
+      return out.exitCode;
+    }
+    default:
+      process.stdout.write("Usage: sponsorline <init|statusline|why|earnings|verify|off> [--json]\n");
+      return cmd ? 2 : 0;
+  }
+}

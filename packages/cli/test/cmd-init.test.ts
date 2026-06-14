@@ -1,0 +1,59 @@
+import { describe, it, expect, beforeEach } from "vitest";
+import { mkdtempSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { deriveDeviceKey, validateConsent } from "@sponsorline/core";
+import { Store } from "../src/store.js";
+import { runInit } from "../src/cmd-init.js";
+import { runOff } from "../src/cmd-off.js";
+
+let appdir: string;
+let settingsPath: string;
+
+beforeEach(() => {
+  appdir = mkdtempSync(join(tmpdir(), "sl-init-"));
+  settingsPath = join(mkdtempSync(join(tmpdir(), "sl-cc-")), "settings.json");
+});
+
+describe("init / off", () => {
+  it("writes a valid consent record and a statusLine config block", async () => {
+    const code = await runInit({ appDir: appdir, settingsPath, acceptDefaults: true, now: 0, ttlMs: 1e12 });
+    expect(code).toBe(0);
+    const store = new Store(appdir);
+    const consent = store.readConsent()!;
+    const salt = readFileSync(join(appdir, "salt"), "utf8");
+    const key = deriveDeviceKey(salt);
+    expect(validateConsent(consent, { publicKeyHex: key.publicKeyHex, now: 1 }).valid).toBe(true);
+    const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
+    expect(settings.statusLine.command).toContain("sponsorline statusline");
+  });
+
+  it("is idempotent (second init does not duplicate or corrupt settings)", async () => {
+    await runInit({ appDir: appdir, settingsPath, acceptDefaults: true, now: 0, ttlMs: 1e12 });
+    await runInit({ appDir: appdir, settingsPath, acceptDefaults: true, now: 0, ttlMs: 1e12 });
+    const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
+    expect(settings.statusLine.command).toContain("sponsorline statusline");
+  });
+
+  it("preserves unrelated settings keys", async () => {
+    writeFileSync(settingsPath, JSON.stringify({ theme: "dark" }));
+    await runInit({ appDir: appdir, settingsPath, acceptDefaults: true, now: 0, ttlMs: 1e12 });
+    const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
+    expect(settings.theme).toBe("dark");
+    expect(settings.statusLine).toBeDefined();
+  });
+
+  it("off revokes consent and removes the statusLine block immediately", async () => {
+    await runInit({ appDir: appdir, settingsPath, acceptDefaults: true, now: 0, ttlMs: 1e12 });
+    const code = await runOff({ appDir: appdir, settingsPath, now: 10 });
+    expect(code).toBe(0);
+    const store = new Store(appdir);
+    const salt = readFileSync(join(appdir, "salt"), "utf8");
+    const key = deriveDeviceKey(salt);
+    const r = validateConsent(store.readConsent()!, { publicKeyHex: key.publicKeyHex, now: 11 });
+    expect(r.valid).toBe(false);
+    expect(r.reason).toBe("revoked");
+    const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
+    expect(settings.statusLine).toBeUndefined();
+  });
+});
