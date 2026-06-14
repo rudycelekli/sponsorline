@@ -69,6 +69,18 @@ describe("init / off", () => {
     expect(r.reason).toBe("revoked");
   });
 
+  it("off never crashes on a malformed settings.json (kill switch still revokes)", async () => {
+    await runInit({ appDir: appdir, settingsPath, acceptDefaults: true, now: 0, ttlMs: 1e12 });
+    writeFileSync(settingsPath, "{ this is not valid json"); // user hand-edited / mid-write
+    const code = await runOff({ appDir: appdir, settingsPath, now: 10 });
+    expect(code).toBe(0); // the opt-out command must succeed regardless
+    const store = new Store(appdir);
+    const key = deriveDeviceKey(readFileSync(join(appdir, "salt"), "utf8"));
+    const r = validateConsent(store.readConsent()!, { publicKeyHex: key.publicKeyHex, now: 11 });
+    expect(r.valid).toBe(false);
+    expect(r.reason).toBe("revoked"); // consent revoked even though settings was unparseable
+  });
+
   it("off revokes consent and removes the statusLine block immediately", async () => {
     await runInit({ appDir: appdir, settingsPath, acceptDefaults: true, now: 0, ttlMs: 1e12 });
     const code = await runOff({ appDir: appdir, settingsPath, now: 10 });
