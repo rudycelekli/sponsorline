@@ -10,6 +10,7 @@ import { runWhy } from "./cmd-why.js";
 import { runEarnings } from "./cmd-earnings.js";
 import { runFeedback } from "./cmd-feedback.js";
 import { runStatus } from "./cmd-status.js";
+import { runReceipt } from "./cmd-receipt.js";
 import { execSync } from "node:child_process";
 
 function readStdin(): Promise<string> {
@@ -78,6 +79,13 @@ export async function main(argv: string[]): Promise<number> {
       process.stdout.write((json ? JSON.stringify(out.report) : `verify: ${out.report.ok ? "OK" : "FAIL — " + out.report.reason} (${out.report.replayedAuctions} auctions replayed)`) + "\n");
       return out.exitCode;
     }
+    case "receipt": {
+      // Opt-in egress: emit a signed per-campaign reach receipt. Always JSON — it is
+      // a machine artifact a developer hands to a marketer/platform to claim payout.
+      const out = runReceipt({ appDir: dir, salt: salt(dir), now });
+      process.stdout.write(JSON.stringify(out.receipt) + "\n");
+      return out.exitCode;
+    }
     case "status": {
       const out = runStatus({ appDir: dir, salt: salt(dir), settingsPath: ccSettingsPath(), now, cliOnPath: cliResolves() });
       if (json) {
@@ -89,7 +97,7 @@ export async function main(argv: string[]): Promise<number> {
       return out.exitCode;
     }
     default:
-      process.stdout.write("Usage: sponsorline <init|statusline|status|why|earnings|verify|feedback|off> [--json]\n");
+      process.stdout.write("Usage: sponsorline <init|statusline|status|receipt|why|earnings|verify|feedback|off> [--json]\n");
       return cmd ? 2 : 0;
   }
 }
