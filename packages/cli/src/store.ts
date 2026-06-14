@@ -93,4 +93,11 @@ export class Store {
   }
 }
 
-export interface RenderState { lastImpressionAt: number; lastCreative: string; }
+export interface RenderState {
+  lastImpressionAt: number;
+  lastCreative: string;
+  // Attribution for the on-device feedback loop. Optional because v0.1 render
+  // states predate them — `feedback` treats their absence as "nothing to score yet".
+  lastAdvertiserId?: string;
+  lastBucket?: string;
+}

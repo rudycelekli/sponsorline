@@ -14,6 +14,7 @@ That little "Thinking…" line your AI coding tool shows while it works? Sponsor
 npx sponsorline init        # consent wizard + configures Claude Code statusLine
 # ... use Claude Code normally; your status bar now earns ...
 npx sponsorline why         # why was THIS line shown?
+npx sponsorline feedback good   # tune relevance on-device (good|bad); never leaves the machine
 npx sponsorline earnings    # what have I accrued?
 npx sponsorline verify      # stranger-verifiable: replay every auction, assert privacy
 npx sponsorline off         # immediate revoke
@@ -41,4 +42,4 @@ What it does **not** prove on its own is *whose* device produced the log. The pu
 
 ## Architecture
 
-`@sponsorline/core` (pure substrate) → `sponsorline` CLI (the official statusLine command + init/why/earnings/verify/off) → `@sponsorline/mcp` (advertiser/enterprise seam). Local JSONL witness log; Ed25519 seals; deterministic second-price auction. See `docs/adr/ADR-0001-sponsorline-v0.1.md`.
+`@sponsorline/core` (pure substrate) → `sponsorline` CLI (the official statusLine command + init/why/feedback/earnings/verify/off) → `@sponsorline/mcp` (advertiser/enterprise seam). Local JSONL witness log; Ed25519 seals; deterministic second-price auction. See `docs/adr/ADR-0001-sponsorline-v0.1.md`.

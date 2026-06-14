@@ -126,7 +126,12 @@ export async function runStatusline(input: StatuslineInput): Promise<StatuslineO
         impressionCount: ledger.impressionCount,
       });
 
-      store.writeRenderState({ lastImpressionAt: input.now, lastCreative: result.winningCreative! });
+      store.writeRenderState({
+        lastImpressionAt: input.now,
+        lastCreative: result.winningCreative!,
+        lastAdvertiserId: result.winnerId,
+        lastBucket: bucket,
+      });
 
       return { line: sponsorLine(modelName, result.winningCreative!), exitCode: 0 };
     } finally {

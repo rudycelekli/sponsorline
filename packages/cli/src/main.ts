@@ -8,6 +8,7 @@ import { runOff } from "./cmd-off.js";
 import { runVerify } from "./cmd-verify.js";
 import { runWhy } from "./cmd-why.js";
 import { runEarnings } from "./cmd-earnings.js";
+import { runFeedback } from "./cmd-feedback.js";
 
 function readStdin(): Promise<string> {
   return new Promise((resolve) => {
@@ -44,6 +45,11 @@ export async function main(argv: string[]): Promise<number> {
       return out.exitCode;
     }
     case "off": return runOff({ appDir: dir, settingsPath: ccSettingsPath(), now });
+    case "feedback": {
+      const out = await runFeedback({ appDir: dir, verdict: argv[1] ?? "" });
+      process.stdout.write((json ? JSON.stringify(out) : out.message) + "\n");
+      return out.exitCode;
+    }
     case "why": {
       const out = await runWhy({ appDir: dir });
       process.stdout.write((json ? JSON.stringify(out) : out.explanation ?? "No impressions yet.") + "\n");
@@ -60,7 +66,7 @@ export async function main(argv: string[]): Promise<number> {
       return out.exitCode;
     }
     default:
-      process.stdout.write("Usage: sponsorline <init|statusline|why|earnings|verify|off> [--json]\n");
+      process.stdout.write("Usage: sponsorline <init|statusline|why|earnings|verify|feedback|off> [--json]\n");
       return cmd ? 2 : 0;
   }
 }
