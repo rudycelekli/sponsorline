@@ -6,7 +6,7 @@ import { execSync } from "node:child_process";
 import {
   buildInterestVector, runAuction, deriveDeviceKey, createConsent,
   makeImpression, verifyLog, validateConsent, revokeConsent, Ledger, reconcile, chainHash,
-} from "@sponsorline/core";
+} from "@effinai/sponsorline-core";
 import { naivePick } from "./baselines/naive/baseline.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));

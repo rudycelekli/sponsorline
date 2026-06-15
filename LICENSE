@@ -5,7 +5,7 @@
 Required Notice: Copyright (c) 2026 Sponsorline (https://sponsorline.dev)
 
 This license governs the source-available, on-device Sponsorline client:
-`@sponsorline/core`, the `sponsorline` CLI, and the `sponsorline-cursor`
+`@effinai/sponsorline-core`, the `sponsorline` CLI, and the `sponsorline-cursor`
 adapter. You may read, run, audit, and verify this software for any purpose,
 including independent verification of its privacy guarantees. You may not use
 it to provide a product that competes with Sponsorline. See the Noncompete

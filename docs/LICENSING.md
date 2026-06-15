@@ -9,7 +9,7 @@ exactly that line.
 
 | Package | Role | Visibility | License |
 |---------|------|------------|---------|
-| `@sponsorline/core` | On-device substrate: signal building, witness hash chain, Ed25519 seal, `verify` | **Public, source-available** | PolyForm Shield 1.0.0 (`/LICENSE`) |
+| `@effinai/sponsorline-core` | On-device substrate: signal building, witness hash chain, Ed25519 seal, `verify` | **Public, source-available** | PolyForm Shield 1.0.0 (`/LICENSE`) |
 | `sponsorline` (CLI) | The official `statusLine` command + `init/why/feedback/earnings/verify/off` | **Public, source-available** | PolyForm Shield 1.0.0 |
 | `sponsorline-cursor` | Thin Cursor/VS Code status-bar adapter over the same CLI engine | **Public, source-available** | PolyForm Shield 1.0.0 |
 | `@sponsorline/mcp` | Advertiser/marketer/billing/payout backend seam (incl. Stripe gateway) | **Private, proprietary** | UNLICENSED (`packages/mcp/LICENSE`) |

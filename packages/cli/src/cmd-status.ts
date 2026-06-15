@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { validateConsent, type ConsentRecord, type KycStatus } from "@sponsorline/core";
+import { validateConsent, type ConsentRecord, type KycStatus } from "@effinai/sponsorline-core";
 import { Store } from "./store.js";
 import { runPayout } from "./cmd-payout.js";
 

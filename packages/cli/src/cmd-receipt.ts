@@ -1,4 +1,4 @@
-import { deriveDeviceKey, buildReceipt, type Receipt } from "@sponsorline/core";
+import { deriveDeviceKey, buildReceipt, type Receipt } from "@effinai/sponsorline-core";
 import { Store } from "./store.js";
 
 // `sponsorline receipt` — the OPT-IN egress action. It folds this device's signed

@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { randomBytes } from "node:crypto";
-import { deriveDeviceKey, createConsent } from "@sponsorline/core";
+import { deriveDeviceKey, createConsent } from "@effinai/sponsorline-core";
 import { Store } from "./store.js";
 
 export interface InitInput {

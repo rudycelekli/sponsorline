@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync, appendFileSync, existsSync, openSync, closeSync, unlinkSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { chainHash, type Bidder, type ConsentRecord, type Impression, type PayoutAccount } from "@sponsorline/core";
+import { chainHash, type Bidder, type ConsentRecord, type Impression, type PayoutAccount } from "@effinai/sponsorline-core";
 
 // A lock older than this is treated as abandoned by a crashed process and stolen.
 const LOCK_STALE_MS = 30_000;

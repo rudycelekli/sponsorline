@@ -1,4 +1,4 @@
-import { verifyLog, validateConsent } from "@sponsorline/core";
+import { verifyLog, validateConsent } from "@effinai/sponsorline-core";
 import { Store } from "./store.js";
 
 export interface VerifyInput { appDir: string; now: number; }

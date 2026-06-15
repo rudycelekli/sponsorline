@@ -1,4 +1,4 @@
-import { reconcile, Ledger } from "@sponsorline/core";
+import { reconcile, Ledger } from "@effinai/sponsorline-core";
 import { Store } from "./store.js";
 
 export interface EarningsInput { appDir: string; }

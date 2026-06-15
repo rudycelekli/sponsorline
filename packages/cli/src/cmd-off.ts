@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { deriveDeviceKey, revokeConsent } from "@sponsorline/core";
+import { deriveDeviceKey, revokeConsent } from "@effinai/sponsorline-core";
 import { Store } from "./store.js";
 
 export interface OffInput { appDir: string; settingsPath: string; now: number; }

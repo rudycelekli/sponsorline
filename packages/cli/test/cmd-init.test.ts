@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { mkdtempSync, readFileSync, writeFileSync, existsSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { deriveDeviceKey, validateConsent } from "@sponsorline/core";
+import { deriveDeviceKey, validateConsent } from "@effinai/sponsorline-core";
 import { Store } from "../src/store.js";
 import { runInit } from "../src/cmd-init.js";
 import { runOff } from "../src/cmd-off.js";

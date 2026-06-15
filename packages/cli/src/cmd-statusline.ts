@@ -9,7 +9,7 @@ import {
   Ledger,
   SolverBandit,
   type Bidder,
-} from "@sponsorline/core";
+} from "@effinai/sponsorline-core";
 import { Store } from "./store.js";
 
 const MANIFESTS = ["package.json", "tsconfig.json", "requirements.txt", "pyproject.toml", "cargo.toml", "go.mod"];

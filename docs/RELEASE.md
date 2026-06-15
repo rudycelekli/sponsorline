@@ -33,7 +33,7 @@ and 164 tests pass (only the 21 mcp tests leave with it). After extraction, copy
 ## 2. Publish the client to npm
 
 The public packages are configured for one-command publish:
-`@sponsorline/core` carries `publishConfig.access: "public"` (scoped packages are
+`@effinai/sponsorline-core` carries `publishConfig.access: "public"` (scoped packages are
 private by default), both packages rebuild via `prepublishOnly`, and each ships
 `dist` + `LICENSE` only (dry-run verified: no `src`/`test` leak).
 
@@ -42,7 +42,7 @@ resolved from the registry), then the CLI:
 
 ```bash
 npm login
-npm publish -w @sponsorline/core   # -> @sponsorline/core@0.1.0 (public)
+npm publish -w @effinai/sponsorline-core   # -> @effinai/sponsorline-core@0.1.0 (public)
 npm publish -w sponsorline          # -> sponsorline@0.1.0
 ```
 

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { deriveDeviceKey, makeImpression, verifyReceipt, chainHash, type Bidder, type Impression } from "@sponsorline/core";
+import { deriveDeviceKey, makeImpression, verifyReceipt, chainHash, type Bidder, type Impression } from "@effinai/sponsorline-core";
 import { Store } from "../src/store.js";
 import { runReceipt } from "../src/cmd-receipt.js";
 

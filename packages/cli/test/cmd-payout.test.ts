@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { deriveDeviceKey, type PayoutAccount } from "@sponsorline/core";
+import { deriveDeviceKey, type PayoutAccount } from "@effinai/sponsorline-core";
 import { Store } from "../src/store.js";
 import { runPayout } from "../src/cmd-payout.js";
 

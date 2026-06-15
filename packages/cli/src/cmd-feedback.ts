@@ -1,4 +1,4 @@
-import { SolverBandit } from "@sponsorline/core";
+import { SolverBandit } from "@effinai/sponsorline-core";
 import { Store } from "./store.js";
 
 export interface FeedbackInput {

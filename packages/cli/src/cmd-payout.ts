@@ -1,4 +1,4 @@
-import { deriveDeviceKey, payableCents, authorizePayout, DEFAULT_PAYOUT_POLICY, type KycStatus } from "@sponsorline/core";
+import { deriveDeviceKey, payableCents, authorizePayout, DEFAULT_PAYOUT_POLICY, type KycStatus } from "@effinai/sponsorline-core";
 import { Store } from "./store.js";
 
 // Developer-facing payout readiness. This command is READ-ONLY: it never moves money

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { SolverBandit } from "@sponsorline/core";
+import { SolverBandit } from "@effinai/sponsorline-core";
 import { Store } from "../src/store.js";
 import { runFeedback } from "../src/cmd-feedback.js";
 
