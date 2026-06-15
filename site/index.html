@@ -257,6 +257,7 @@
     <a href="#proof">Proof</a>
     <a href="#how">How it works</a>
     <a href="#earn">Earnings</a>
+    <a href="#settle">Settlement</a>
     <a href="#moat">Guardrails</a>
     <a class="ghost" href="#verify">npx sponsorline verify</a>
   </nav>
@@ -393,6 +394,65 @@ npx sponsorline verify">Copy</button>
 
   <div class="rule"></div>
 
+  <!-- SETTLEMENT -->
+  <section id="settle">
+    <div class="wrap">
+      <div class="spine">
+        <div class="kicker">Settlement you can audit</div>
+        <h2 class="head">Proof the money is real, not just that the ad showed.</h2>
+        <p class="sub">Receipts prove a device authentically showed a sponsor line. They do not, on their own, prove an advertiser funded it. We close that gap with a public, signed, hash-chained settlement ledger: every dollar in and every dollar out, in the open, checkable by anyone, with no trust in us beyond the fact that we published it.</p>
+      </div>
+
+      <div class="receipt" aria-label="Settlement ledger transcript">
+        <div class="receipt-head">
+          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="label">public settlement ledger &middot; replay</span>
+          <button class="copy" data-copy="npx sponsorline settlement verify">Copy</button>
+        </div>
+        <div class="receipt-body">
+<span class="cmt"># Every fund and payout, signed and chained. Replay it.</span>
+<span class="prompt">$</span> npx sponsorline settlement verify
+<span class="out">fund    acme   +$500.00   ch_1A2B   </span><span class="cmt">(advertiser, via Stripe)</span>
+<span class="out">payout  devA     -$3.00   r1 &rarr; po_1</span>
+<span class="out">payout  devB     -$3.00   r2 &rarr; po_2</span>
+<span class="out">checking head signature over the chain ...</span>
+<span class="out">asserting money out &le; money in, per campaign ...</span>
+<span class="out">asserting each receipt backs &le; one payout ...</span>
+<span class="ok">&#10003; conserved</span> <span class="out">&middot; acme funded $500.00 &middot; paid $6.00 &middot; 0 double-claims</span>
+        </div>
+        <div class="stamp" aria-hidden="true"><span class="seal-mark" style="width:14px;height:14px;box-shadow:inset 0 0 0 1px var(--seal-wash), inset 0 0 0 1.5px var(--seal);"></span> CONSERVED</div>
+      </div>
+
+      <div class="spine">
+        <ul class="proof">
+          <li>
+            <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="4,12 10,18 20,6"/></svg></span>
+            <div><b>Conservation, per campaign</b><span>Total payouts can never exceed total funding for a campaign. You cannot be paid from money that was never put in. This is the real provenance check, not arithmetic over numbers the system invented.</span></div>
+          </li>
+          <li>
+            <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="4,12 10,18 20,6"/></svg></span>
+            <div><b>No receipt paid twice</b><span>Each payout binds to one device receipt by its hash (<span class="mono">receiptHash</span>). The same receipt can back at most one payout, so reach can never be billed or paid out twice.</span></div>
+          </li>
+          <li>
+            <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="4,12 10,18 20,6"/></svg></span>
+            <div><b>Funding traced across the fiat line</b><span>Every funding entry carries its real-world reference (<span class="mono">fundingRef</span>, e.g. a Stripe charge id), so the chain from card-charge to funded-campaign to developer payout is auditable end to end.</span></div>
+          </li>
+          <li>
+            <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="4,12 10,18 20,6"/></svg></span>
+            <div><b>Tamper-evident, like the receipts</b><span>The same primitive: one Ed25519 signature over the chain head authenticates the whole ordered ledger. Any insert, delete, reorder, or edit breaks verification.</span></div>
+          </li>
+        </ul>
+
+        <div class="caveat">
+          <div class="t"><span class="q" aria-hidden="true">&#8801;</span> Honest about the trust model</div>
+          <p>Advertisers pay the friendly way: card or USD through Stripe Checkout, like any SaaS. Today the ledger is trust-but-verify: we move the money in our backend and publish a signed, conserved record you can re-run, so a dishonest or partial ledger is detectable. The documented next step removes even that residual trust: USDC escrow on Solana, where the same Ed25519 receipt becomes the on-chain settlement claim and funds release without a custodian.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+
   <!-- MOAT / GUARDRAILS -->
   <section id="moat">
     <div class="wrap">
@@ -437,6 +497,7 @@ npx sponsorline verify">Copy</button>
   <div class="links">
     <a href="#proof">Proof</a>
     <a href="#how">How it works</a>
+    <a href="#settle">Settlement</a>
     <a href="#moat">Guardrails</a>
     <a href="../SECURITY.md">Security</a>
     <a href="../docs/security/threat-model.md">Threat model</a>

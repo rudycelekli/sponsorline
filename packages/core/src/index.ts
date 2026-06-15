@@ -12,5 +12,6 @@ export * from "./report.js";
 export * from "./crypto.js";
 export * from "./witness.js";
 export * from "./ledger.js";
+export * from "./settlement.js";
 export * from "./relevance.js";
 export * from "./consent.js";
