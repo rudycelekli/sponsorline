@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Premortem — Founding-Sponsor Seed Plan</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --panel: #121829;
+    --panel-2: #161d33;
+    --ink: #e7ecf6;
+    --muted: #9aa6c2;
+    --line: #243049;
+    --accent: #6ea8ff;
+    --crit: #ff5d6c;
+    --high: #ffb454;
+    --med: #ffd866;
+    --low: #74d99f;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    letter-spacing: 0.1px;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 48px 24px 96px; }
+  header.top { border-bottom: 1px solid var(--line); padding-bottom: 24px; margin-bottom: 36px; }
+  .kicker { color: var(--accent); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.4px; }
+  h1 { font-size: 30px; line-height: 1.2; margin: 10px 0 8px; }
+  .sub { color: var(--muted); font-size: 14.5px; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 16px; color: var(--muted); font-size: 13px; }
+  .meta-row b { color: var(--ink); font-weight: 600; }
+
+  section { margin: 40px 0; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--muted); margin: 0 0 18px; }
+
+  .synth-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .synth-grid { grid-template-columns: 1fr; } }
+  .synth {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px;
+  }
+  .synth.full { grid-column: 1 / -1; }
+  .synth .label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .synth.likely .label { color: var(--high); }
+  .synth.dangerous .label { color: var(--crit); }
+  .synth.assumption .label { color: var(--accent); }
+  .synth p { margin: 0; color: var(--ink); font-size: 15px; }
+  .synth.assumption p strong { color: #cdacff; }
+
+  .scope { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
+  .stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; flex: 1; min-width: 140px; }
+  .stat .n { font-size: 26px; font-weight: 700; }
+  .stat .t { color: var(--muted); font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.6px; }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .cards { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-left-width: 1px;
+    border-radius: 14px; padding: 20px 22px; position: relative; overflow: hidden;
+  }
+  .card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--c, var(--accent)); }
+  .card h3 { font-size: 16px; margin: 6px 0 4px; line-height: 1.3; }
+  .card .num { font-size: 12px; font-weight: 700; color: var(--c, var(--accent)); letter-spacing: 1px; }
+  .sev { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+         padding: 3px 9px; border-radius: 999px; margin-left: 8px; vertical-align: middle; }
+  .sev.crit { background: rgba(255,93,108,.15); color: var(--crit); }
+  .sev.high { background: rgba(255,180,84,.15); color: var(--high); }
+  .sev.med  { background: rgba(255,216,102,.13); color: var(--med); }
+  .card .story { color: var(--ink); font-size: 14px; margin: 12px 0; }
+  .card .field { margin-top: 12px; }
+  .card .field .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); font-weight: 700; }
+  .card .field .v { font-size: 13.5px; color: #c9d3ea; margin-top: 3px; }
+  code { background: #0e1422; border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 12.5px; color: #b8c6e6; }
+
+  ol.revised { padding-left: 20px; }
+  ol.revised li { margin-bottom: 12px; }
+  ol.revised li b { color: var(--ink); }
+  ul.check { list-style: none; padding: 0; }
+  ul.check li { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px 12px 42px; margin-bottom: 10px; position: relative; font-size: 14px; color: #d4dcef; }
+  ul.check li::before { content: "\2610"; position: absolute; left: 16px; top: 11px; color: var(--accent); font-size: 16px; }
+
+  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="kicker">Premortem &middot; Prospective Hindsight</div>
+    <h1>Founding-Sponsor Seed Plan</h1>
+    <div class="sub">Sponsorline &mdash; bootstrapping the two-sided network from zero without a marketer portal, billing custody, or ad-provider integration.</div>
+    <div class="meta-row">
+      <span><b>Frame:</b> it is ~6 months out; the plan failed</span>
+      <span><b>Method:</b> Gary Klein, 8 parallel investigators</span>
+      <span><b>Date:</b> 2026-06-14</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>Synthesis &mdash; read this first</h2>
+    <div class="synth-grid">
+      <div class="synth likely">
+        <div class="label">Most likely failure</div>
+        <p>The two-sided cold-start deadlock in concierge form (01 + 03 + 04). The load-bearing premise &mdash; &ldquo;keep the supply-on to demand-on gap to days&rdquo; &mdash; is false: serial two-sided concierge sales by one founder takes weeks-to-months, and in that gap the honest, stranger-verifiable receipt chain turns the emptiness into a credible, quotable public artifact that burns the exact evangelist cohort you need.</p>
+      </div>
+      <div class="synth dangerous">
+        <div class="label">Most dangerous failure</div>
+        <p>Flat-fee seed economics making <code>verify</code> attest to fiction (05), tied with a Stripe balance freeze (08). 05 is irreversible and strikes the core: <code>verify</code>/<code>reconcile()</code> today prove <em>internal consistency</em>, not <em>real-money provenance</em>. Once &ldquo;verifiable&rdquo; is shown to be theater on the most scrutiny-prone cohort, the moat is gone for good.</p>
+      </div>
+      <div class="synth assumption full">
+        <div class="label">The hidden assumption</div>
+        <p>That you can seed the network with shortcuts (synthetic auction bids, flat off-platform fees, goodwill sponsors, manual everything) without those shortcuts dissolving the very properties the seed exists to prove. The sharpest form: <strong>&ldquo;verify&rdquo; currently proves the math is consistent with itself, not that the money is real</strong> &mdash; and the seed is exactly where that bites.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The 8 investigators</h2>
+    <div class="scope">
+      <div class="stat"><div class="n">8</div><div class="t">Failure modes</div></div>
+      <div class="stat"><div class="n">2</div><div class="t">Critical / irreversible</div></div>
+      <div class="stat"><div class="n">4</div><div class="t">High severity</div></div>
+      <div class="stat"><div class="n">2</div><div class="t">Medium severity</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Failure deep-dives</h2>
+    <div class="cards">
+
+      <div class="card" style="--c: var(--high)">
+        <span class="num">FAILURE 01</span><span class="sev high">High</span>
+        <h3>Sponsors won&rsquo;t pre-fund; reach can&rsquo;t accrue first</h3>
+        <div class="story">At recruit time the segment has ~0 devices, so <code>aggregateReceipts</code> returns suppressed/empty by design. Every buyer sees a literal zero on the only number that matters and says &ldquo;come back when you have the audience&rdquo; &mdash; but the audience is what the money was meant to seed. The receipt chain&rsquo;s refusal to lie about reach is what stops either side going first.</div>
+        <div class="field"><div class="k">Assumption</div><div class="v">Founding sponsors will pay on the <em>promise</em> of verifiable reach rather than demanding <em>proven</em> reach first.</div></div>
+        <div class="field"><div class="k">Warning signs</div><div class="v">First calls end with &ldquo;send audience numbers first&rdquo;; <code>suppressedCampaigns &gt; 0</code> and <code>reachDevices = 0</code> for weeks while opt-ins stay flat.</div></div>
+      </div>
+
+      <div class="card" style="--c: var(--crit)">
+        <span class="num">FAILURE 02</span><span class="sev high">High</span>
+        <h3>The k-anon-clearing segment isn&rsquo;t a buyable segment</h3>
+        <div class="story">We picked <code>lang:python</code> because it was the only thing that could clear 200 in weeks. We hit 240 &mdash; then every sponsor asked &ldquo;who are these people?&rdquo; and the only honest answer was &ldquo;people who write Python.&rdquo; Narrowing to <code>framework:django</code> + <code>task:database</code> dropped to ~30 and the floor refused to emit. We could prove a segment nobody buys, or describe one we could never prove.</div>
+        <div class="field"><div class="k">Assumption</div><div class="v">A privacy-provable broad segment has buyer value, when spend pays for the exact qualification the 3-prefix vocabulary + k-anon floor forbid.</div></div>
+        <div class="field"><div class="k">Warning signs</div><div class="v">First sponsor question is always &ldquo;can you narrow to X?&rdquo;; every narrowing drops below 200 or isn&rsquo;t expressible; sponsors only agree to an &ldquo;experiment&rdquo; flat fee with no renewal line.</div></div>
+      </div>
+
+      <div class="card" style="--c: var(--high)">
+        <span class="num">FAILURE 03</span><span class="sev high">High</span>
+        <h3>Developer churn in the supply-on &rarr; demand-on gap</h3>
+        <div class="story">~300 opt-ins in three weeks; closing one sponsor took six-to-eight weeks, not days. Devs saw the plain &ldquo;Thinking&hellip;&rdquo; line earning nothing. Because earnings are signed and stranger-verifiable, &ldquo;$0.03 over two weeks, toggled off&rdquo; became a credible, screenshotable artifact. The trust moat made the cold-start emptiness <em>quotable</em>, and evangelists opt in only once.</div>
+        <div class="field"><div class="k">Assumption</div><div class="v">The gap is a scheduling problem (days), not a structural consequence of serial two-sided concierge sales (weeks-to-months).</div></div>
+        <div class="field"><div class="k">Warning signs</div><div class="v">Median days-since-opt-in with zero paid receipts climbing past ~7; first public signed-receipt screenshot of $0 earnings on HN/Discord.</div></div>
+      </div>
+
+      <div class="card" style="--c: var(--high)">
+        <span class="num">FAILURE 04</span><span class="sev high">High</span>
+        <h3>Concierge doesn&rsquo;t scale; founder bottleneck + reconciliation drift</h3>
+        <div class="story">Sponsors 1-5 felt like proof at ~3 founder-hours each. Then the same person had to ship npm patches, fix the status bar, recruit 100 more devs AND onboard sponsors 6-10. The quiet killer: by-hand payout matching against signed receipts is exact work done in stolen minutes. A flat fee got entered as a daily cap; payout cycles slipped. The k-anon floor held; the operator didn&rsquo;t.</div>
+        <div class="field"><div class="k">Assumption</div><div class="v">Concierge effort scales sub-linearly, when it&rsquo;s fixed-cost-per-unit work competing for the same person&rsquo;s hours as engineering and supply.</div></div>
+        <div class="field"><div class="k">Warning signs</div><div class="v">Onboarding lead time creeping past a week, or a queue of &ldquo;verbally committed, not loaded&rdquo;; first reconciliation mismatch, especially one caught by a sponsor or dev.</div></div>
+      </div>
+
+      <div class="card" style="--c: var(--crit)">
+        <span class="num">FAILURE 05</span><span class="sev crit">Critical</span>
+        <h3>Flat-fee economics make <code>verify</code> truthful about fiction</h3>
+        <div class="story">The auction needs bids; a flat-fee sponsor never submitted one, so the operator seeds a synthetic <code>bidCents</code>. Each impression records a <code>clearingPriceCents</code>, the ledger accrues <code>floor(clearing/2)</code>, <code>verify</code> exits 0 &mdash; internally consistent and entirely circular. <code>reconcile()</code> only proves <code>developerBalance == sum(clearingPrices)/2</code>, a tautology over operator-chosen numbers. The seed shortcut didn&rsquo;t break <code>verify</code>; it made <code>verify</code> truthful about fiction. Once exposed as theater, trust doesn&rsquo;t come back.</div>
+        <div class="field"><div class="k">Assumption</div><div class="v">Cryptographically replaying the auction proves earnings are real, when it only proves the recorded numbers agree with each other.</div></div>
+        <div class="field"><div class="k">Warning signs</div><div class="v"><code>clearingPriceCents</code> traces to operator-set synthetic bids; <code>flat_fee / impressions</code> reconciles to no receipt; <code>verify</code> green while money stops at <code>DryRunGateway</code>.</div></div>
+      </div>
+
+      <div class="card" style="--c: var(--high)">
+        <span class="num">FAILURE 06</span><span class="sev high">High</span>
+        <h3>No attribution &rarr; goodwill spend &rarr; no renewal</h3>
+        <div class="story">Eight sponsors signed on the founder&rsquo;s network and a clean values pitch. The flight delivered exactly what was promised. Then Q3 planning hit: each lead defended line items against a CAC/ROAS spreadsheet, and Sponsorline&rsquo;s row had one number (impressions) and a blank where pipeline belongs. The champion couldn&rsquo;t translate goodwill into a renewal the growth team would approve. Five of eight churned silently; zero renewed; the &ldquo;&ge;2 renew&rdquo; gate failed.</div>
+        <div class="field"><div class="k">Assumption</div><div class="v">Sponsors who buy on values will renew on values, when they buy on values once but renew only against a number finance accepts.</div></div>
+        <div class="field"><div class="k">Warning signs</div><div class="v">Sponsors ask &ldquo;how will we know it worked?&rdquo; and accept a vague answer; the signer is a founder/VP, not the growth owner who controls recurring budget.</div></div>
+      </div>
+
+      <div class="card" style="--c: var(--med)">
+        <span class="num">FAILURE 07</span><span class="sev med">Medium</span>
+        <h3>Inconsistent manual creative review detonates the brand</h3>
+        <div class="story">Sponsor #6 asked to swap in a &ldquo;punchier&rdquo; line: &ldquo;Ship 10x faster, your competitors already are.&rdquo; With no codified rubric, the operator read it as borderline-acceptable and loaded it. A dev screenshotted it beneath Sponsorline&rsquo;s own copy (&ldquo;addictive products earn attention, they don&rsquo;t demand it&rdquo;) with &ldquo;demand it, apparently.&rdquo; The thread&rsquo;s point: judgment-based review is only as strong as the most rushed operator on the worst day.</div>
+        <div class="field"><div class="k">Assumption</div><div class="v">An operator&rsquo;s in-the-moment taste is a reliable, repeatable substitute for a written, enforceable creative standard.</div></div>
+        <div class="field"><div class="k">Warning signs</div><div class="v">Two verdicts on a near-identical line with no written tie-breaker; any approved line uses comparative framing, urgency, or imperative CTA and gets loaded anyway.</div></div>
+      </div>
+
+      <div class="card" style="--c: var(--crit)">
+        <span class="num">FAILURE 08</span><span class="sev crit">Critical</span>
+        <h3>Fee pool re-creates the custody / money-transmitter shape</h3>
+        <div class="story">Off-platform flat fees landed in Sponsorline&rsquo;s Stripe balance: one commingled pool, sponsor dollars in, fanned out to ~300 unrelated devs via <code>/v1/transfers</code> from the platform&rsquo;s own key. By the third batch, Stripe&rsquo;s review saw inbound fees and immediate fan-out to hundreds of new Express accounts with no underlying marketplace transaction, and placed a reserve/hold. &ldquo;Dollars paid and reconciled&rdquo; inverted to &ldquo;receipts exist, dollars frozen.&rdquo; Devs crossing $600 had no W-9/1099 path.</div>
+        <div class="field"><div class="k">Assumption</div><div class="v">Pricing a fee &ldquo;flat&rdquo; and invoicing &ldquo;off-platform&rdquo; changes the regulatory shape, when only the flow (collect, hold, select, fan-out) determines it &mdash; and the flow was unchanged.</div></div>
+        <div class="field"><div class="k">Warning signs</div><div class="v">Fee money sits in Sponsorline&rsquo;s balance before any dev is paid; cumulative US payout approaches $600 with no W-9 on file and no 1099 path in code.</div></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>Revised plan</h2>
+    <ol class="revised">
+      <li><b>Anchor money to receipts before seeding</b> (fixes 05, 08). Either have founding sponsors submit <em>real</em> per-impression bids through the MCP handler, or explicitly label the seed a fixed-reward pilot and stop marketing <code>verify</code> as proof of market earnings. Add a signed settlement record linking each real payment to its impression batch so <code>reconcile()</code> ties to real dollars. Publicly separate the two claims: <code>verify</code> proves privacy + chain integrity (true now) vs proves you were paid a real market price (not true until money is anchored).</li>
+      <li><b>Do not custody</b> (fixes 08). Use Stripe destination charges / <code>on_behalf_of</code> so sponsor money never lands in Sponsorline&rsquo;s balance; decide W-9/1099 before any US dev nears $600, or cap seed payouts well under the threshold with a documented stipend posture.</li>
+      <li><b>Choose the segment by buyer-demand AND k-anon jointly</b> (fixes 02). Before recruiting devs, confirm with 3-5 sponsors that a 200+-clearable 3-prefix segment is worth paying for. If none is, that&rsquo;s a vocabulary / business-model decision to make before seeding (accept CPM brand-sponsorship framing rather than performance targeting).</li>
+      <li><b>Pre-sell demand to break the deadlock</b> (fixes 01, 03). Get written contingent commitments (&ldquo;we fund $X when you reach 200 devices in segment Y&rdquo;) from 3-5 sponsors before recruiting devs. Sequence: soft-circle demand &rarr; recruit supply to the floor &rarr; flip demand live within days.</li>
+      <li><b>Codify the creative standard</b> (fixes 07). One-page written policy (no comparative framing, no urgency/FOMO, no imperative-shaming CTA, mandatory clear label), two-person sign-off, logged approval enforced at submit time, not operator vibe.</li>
+      <li><b>Sell on a renewable, privacy-safe metric, not goodwill</b> (fixes 06). Define what a sponsor can renew against without attribution (DP-aggregate reach + frequency, plus an optional consented on-device aggregate-only signal above k-anon). Sell to the growth owner; set the renewal metric at sale time. If no privacy-safe metric exists, sell these honestly as brand sponsorships.</li>
+      <li><b>Tool the concierge without building a portal</b> (fixes 04). Script campaign loading and a reconciliation check that matches off-platform payments to signed-receipt batches and flags drift; template onboarding. Internal tooling, not a marketer-facing product.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Pre-launch checklist</h2>
+    <ul class="check">
+      <li>3-5 sponsors give written contingent commitments for a specific 200+-clearable 3-prefix segment BEFORE dev recruiting begins.</li>
+      <li>Real-money anchor in place: a signed settlement record links each sponsor payment to its impression batch and <code>reconcile()</code> ties to real dollars &mdash; OR the seed is explicitly a fixed-reward pilot and no marketing claims <code>verify</code> proves market earnings.</li>
+      <li>No sponsor funds land in Sponsorline&rsquo;s Stripe balance (destination charges / <code>on_behalf_of</code>), OR seed payouts capped under tax thresholds with a documented stipend posture; W-9/1099 path decided.</li>
+      <li>Written creative policy + two-person sign-off + logged approvals, enforced at submit time.</li>
+      <li>Renewal metric agreed with each sponsor&rsquo;s growth owner at sale time (privacy-safe), not goodwill.</li>
+      <li>Reconciliation script flags payment-vs-receipt drift automatically.</li>
+      <li>Median &ldquo;days opted-in with zero paid receipts&rdquo; monitored; supply recruiting paced to the demand-live date.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Premortem on the Founding-Sponsor Seed Plan &middot; Sponsorline &middot; generated 2026-06-14 &middot; 8 parallel investigators (Gary Klein prospective hindsight). Companion transcript: <code>premortem-transcript-founding-sponsor-seed-2026-06-14.md</code>
+  </footer>
+
+</div>
+</body>
+</html>

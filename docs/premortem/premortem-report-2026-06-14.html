@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sponsorline Premortem — Marketer Portal + Ad-Provider Integration</title>
+<style>
+  :root{
+    --bg:#0a0e1a; --panel:#121829; --panel2:#0f1424; --ink:#e7ecf5; --muted:#8a96b0;
+    --line:#222c45; --accent:#5eead4; --warn:#fbbf24; --danger:#f87171;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1080px;margin:0 auto;padding:40px 22px 80px}
+  h1{font-size:26px;margin:0 0 4px}
+  h2{font-size:19px;margin:36px 0 14px;border-bottom:1px solid var(--line);padding-bottom:8px}
+  .sub{color:var(--muted);margin:0 0 6px}
+  .frame{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--accent);padding:14px 16px;border-radius:8px;margin:18px 0 8px;color:var(--muted)}
+  .frame b{color:var(--ink)}
+  .syn{display:grid;gap:14px;margin-top:8px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .card h3{margin:0 0 8px;font-size:16px}
+  .tag{display:inline-block;font-size:11px;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:20px;font-weight:600}
+  .t-most{background:rgba(94,234,212,.12);color:var(--accent);border:1px solid rgba(94,234,212,.35)}
+  .t-dang{background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.35)}
+  .t-hidden{background:rgba(251,191,36,.12);color:var(--warn);border:1px solid rgba(251,191,36,.35)}
+  ol,ul{margin:8px 0 0;padding-left:20px}
+  li{margin:6px 0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;margin-top:8px}
+  .fc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;border-top:4px solid var(--ac)}
+  .fc .num{font-size:12px;color:var(--muted)}
+  .fc h4{margin:4px 0 10px;font-size:15px;line-height:1.35}
+  .fc p{margin:8px 0;font-size:13.5px;color:#cfd7e8}
+  .lbl{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:10px}
+  .sev{float:right;font-size:11px;font-weight:700}
+  .meter{height:6px;border-radius:6px;background:#1b2238;margin-top:4px;overflow:hidden}
+  .meter > i{display:block;height:100%}
+  .scope{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .pill{font-size:12px;background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:4px 10px;color:var(--muted)}
+  footer{margin-top:50px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:16px}
+  code{background:#0c1426;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:12.5px;color:#bfe9df}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Premortem — Marketer Portal + Ad-Provider Integration</h1>
+  <p class="sub">Sponsorline · the AI-dev ad network that never sees your code</p>
+  <div class="scope">
+    <span class="pill">9 investigators ran in parallel</span>
+    <span class="pill">Method: Gary Klein prospective hindsight</span>
+    <span class="pill">Frame: it is late 2026, this already failed</span>
+  </div>
+
+  <div class="frame">
+    <b>What was premortemed:</b> Build a marketer self-serve portal (sign up → fund a balance →
+    build a campaign → set bid/budget/targeting → launch → read reach reports) <b>plus</b>
+    integrations into existing ad providers (Google Ads, Meta) to route/aggregate ad spend into
+    Sponsorline. <b>Success</b> = marketers self-serve onboard, fund, and run campaigns; spend
+    flows in; the network grows on both sides without breaking the "never sees your code" promise.
+  </div>
+
+  <h2>Synthesis — read this first</h2>
+  <div class="syn">
+    <div class="card">
+      <span class="tag t-most">Most likely failure</span>
+      <h3>You build the demand side onto a supply side that doesn't exist yet.</h3>
+      <p>Two independent investigators converged here from different angles (empty-inventory cold
+      start; wrong-side-first). The killer detail is in your own code: the DP engine refuses to
+      emit an aggregate below roughly <b>200 contributing devices</b>, and a deterministic auction
+      against a few hundred thin, single-language installs returns near-empty winner sets. A funded
+      marketer hits Launch, the most polished screen in the product renders a flat line, and the
+      honest signed-receipt count becomes the murder weapon — you can't fudge it. Self-serve makes
+      the emptiness <i>public</i> in a way a concierge sales motion never would.</p>
+    </div>
+    <div class="card">
+      <span class="tag t-dang">Most dangerous failure</span>
+      <h3>The ad-provider integration silently detonates the moat.</h3>
+      <p>This is the one to insure against because it is <b>irreversible</b>. Making spend "fungible"
+      with Google/Meta structurally requires speaking their identity-and-attribution graph: importing
+      Customer Match / Custom Audience segments (hashed-email-derived IDs) and firing conversion
+      pings back (gclid/fbclid). That widens the one-line trust boundary — your 3-entry
+      <code>ALLOWLIST.prefixes</code> array — and opens an outbound channel carrying exactly the
+      PII-adjacent data your homepage swears does not exist. An enterprise reviewer doing what your
+      pitch invites (read the code, don't trust the vendor) diffs <code>targeting.ts</code>,
+      screenshots it next to the marketing copy, and the brand <i>is</i> the contradiction. Tied for
+      danger: a Stripe balance freeze if you custody advertiser funds (money-transmitter shape).</p>
+    </div>
+    <div class="card">
+      <span class="tag t-hidden">The hidden assumption</span>
+      <h3>That you can bolt a conventional ad-network demand side onto Sponsorline without it becoming a conventional ad network.</h3>
+      <p>Every one of the nine stories traces back to this. "Demand will pull supply into existence."
+      "Money-in is the mirror of money-out." "Verifiability is a dev-side feature." "Spend can be
+      made interoperable with Google/Meta." "Stripe handles compliance." Each is the same root
+      assumption wearing a different hat: that the parts of an ordinary ad business (a hosted portal,
+      provider integrations, held balances) can be added without dissolving the single property —
+      trustless verifiability with zero identity data — that is the entire reason Sponsorline is
+      worth building.</p>
+    </div>
+  </div>
+
+  <h2>The revised plan</h2>
+  <div class="card">
+    <ol>
+      <li><b>Sequence supply-first. Do not build the portal yet.</b> Next phase = developer opt-in:
+      the install + consent moment, the "why turn this on" value, crossing the ~200-device DP floor
+      <i>per targetable segment</i>. Hard gate: no marketer UI until real reach reports can emit on
+      real devices.</li>
+      <li><b>Run demand concierge, not self-serve.</b> The MCP marketer handlers already exist
+      (<code>marketer_submit_campaign</code>, <code>marketer_report</code>). Onboard the first 3–5
+      advertisers by hand and invoice manually. Zero portal code until there's proven pull.</li>
+      <li><b>Kill "siphon via Google/Meta APIs" as designed.</b> It violates their ToS <i>and</i>
+      requires their identity graph. Replace with a one-way, manual import of <i>creative + budget
+      intent only</i> (paste/CSV — no OAuth, no audience import, no attribution callback). Turn it
+      into a feature: "bring your creative; we never touch your Google data."</li>
+      <li><b>Make the trust boundary a tripwire.</b> Any PR touching <code>ALLOWLIST.prefixes</code>
+      or adding an outbound call to a <code>*.facebook.com</code>/<code>googleadservices.com</code>
+      endpoint fails CI by default and needs explicit sign-off. Add a test that forbids new prefixes.</li>
+      <li><b>Decide fund-custody posture before any money-in.</b> Strongly prefer <i>not</i> holding
+      balances — route via Stripe so Sponsorline is never the custodian (destination charges /
+      <code>on_behalf_of</code>), sidestepping money-transmitter exposure. Wire W-9 collection +
+      1099 generation <i>before</i> flipping <code>SPONSORLINE_LIVE_PAYOUTS</code>.</li>
+      <li><b>Build the charge/escrow/meter primitive deliberately, separate from any UI.</b> The
+      real 80% is money-in: <code>Ledger.settle()</code>/<code>payout()</code> must stop being
+      <code>never</code>-returning stubs and reconcile against asynchronous signed receipts before a
+      portal exists.</li>
+      <li><b>Adversarial fraud test with real-money incentives before launch.</b> Simulate low-volume
+      sybil farms (the deliberately-deferred T4 gap) and self-dealing rings; build fund-to-payout
+      correlation detection so the 96/day ceiling isn't your only — and disputable — defense.</li>
+    </ol>
+  </div>
+
+  <h2>Pre-launch checklist</h2>
+  <div class="card">
+    <ul>
+      <li>☐ Opted-in <b>active</b> device count per targetable segment ≥ ~200 (DP k-anon floor); a real reach query <i>emits</i>, not "below threshold."</li>
+      <li>☐ Zero new allowlist prefixes; zero outbound calls to ad-provider endpoints carrying receipts/IDs (grep + CI test green).</li>
+      <li>☐ Fund-custody / merchant-of-record posture reviewed by payments counsel; W-9/1099 pipeline live before any real payout.</li>
+      <li>☐ <code>Ledger.settle()</code>/<code>payout()</code> implemented with receipt reconciliation — no stubs anywhere in the money path.</li>
+      <li>☐ Adversarial sybil + self-dealing simulation run; fund-to-payout correlation detection in place.</li>
+    </ul>
+  </div>
+
+  <h2>The nine failure modes</h2>
+  <div class="grid">
+
+    <div class="fc" style="--ac:#5eead4">
+      <span class="sev" style="color:var(--danger)">Likelihood: High</span>
+      <div class="num">Failure 01</div>
+      <h4>Empty-inventory cold start</h4>
+      <p>Marketer funds, builds a <code>lang:python / framework:react / task:refactor</code> campaign, hits Launch — the auction matches ~40 mostly-idle devices and the reach screen renders a flat line. Refund on day three; "vaporware" hits a marketing Slack and a podcast. The honest signed receipt count is the murder weapon: too truthful to fudge.</p>
+      <div class="lbl">Underlying assumption</div>
+      <p>That developer supply would exist (or self-arrive) by the time marketers showed up.</p>
+      <div class="lbl">Early warning</div>
+      <p>Targetable-segment device counts in the dozens, yet the portal allows launch with no reach floor; first campaigns show available-reach far below requested.</p>
+    </div>
+
+    <div class="fc" style="--ac:#f87171">
+      <span class="sev" style="color:var(--danger)">Severity: Critical</span>
+      <div class="num">Failure 02</div>
+      <h4>Billing-in is the real product and it's unbuilt</h4>
+      <p>The slick builder gets the GA date pulled forward; nobody points at <code>ledger.ts</code>, where <code>settle()</code>/<code>payout()</code> are <code>never</code>-returning "v0.3" stubs and there's no advertiser-funded balance to debit. The "almost done" billing plumbing drags four months; real self-serve money never flows. Design partners get invoiced by hand in a spreadsheet.</p>
+      <div class="lbl">Underlying assumption</div>
+      <p>That taking money in is the mirror image of paying money out, so payout discipline carries over.</p>
+      <div class="lbl">Early warning</div>
+      <p>The only working real-money path is money <i>out</i> (<code>StripeConnectGateway.pay</code>); no charge/authorization/escrow primitive exists; advertisers invoiced manually.</p>
+    </div>
+
+    <div class="fc" style="--ac:#fb7185">
+      <span class="sev" style="color:var(--danger)">Severity: Brand-fatal</span>
+      <div class="num">Failure 03</div>
+      <h4>Ad integration breaks the privacy promise</h4>
+      <p>"Import my audiences" adds an <code>audience:</code> allowlist prefix mapping hashed-email Customer Match / Custom Audience IDs; an attribution callback fires gclid/fbclid back to Google/Meta. The 3-line trust boundary is widened to wave PII through. A reviewer diffs <code>targeting.ts</code>, screenshots it beside "no such data exists." The contradiction is the product.</p>
+      <div class="lbl">Underlying assumption</div>
+      <p>That spend can be made interoperable with Google/Meta without importing their identity-and-attribution substrate.</p>
+      <div class="lbl">Early warning</div>
+      <p>Any PR adding to <code>ALLOWLIST.prefixes</code>; any outbound call to a Google/Meta endpoint outside the C2 DP-egress gate, carrying a receipt or click ID.</p>
+    </div>
+
+    <div class="fc" style="--ac:#a78bfa">
+      <span class="sev" style="color:var(--danger)">Severity: High</span>
+      <div class="num">Failure 04</div>
+      <h4>Hosted portal contradicts "no vendor trust"</h4>
+      <p>To fill marketer dashboards, the server becomes source of truth for balances and spend. A championing dev asks on HN: "if the auction and my 50% split are computed server-side from a DB I can't clone, what does <code>verify</code> verify?" The honest answer requires the words "you trust the server." The wedge that made you not-a-commodity is gone.</p>
+      <div class="lbl">Underlying assumption</div>
+      <p>That verifiability is a dev-side feature you can keep on one side, not the property that makes the whole market trustless.</p>
+      <div class="lbl">Early warning</div>
+      <p>A design doc declares "server is source of truth for balances/spend"; a developer publicly asks what <code>verify</code> still proves.</p>
+    </div>
+
+    <div class="fc" style="--ac:#f59e0b">
+      <span class="sev" style="color:var(--danger)">Severity: Critical</span>
+      <div class="num">Failure 05</div>
+      <h4>Fraud integrity collapses with real money</h4>
+      <p>The 96/day ceiling becomes the farming <i>target</i>, not the deterrent: keys minting 40–80 plausible impressions/day stay in <code>clean[]</code> forever. Self-dealing rings (advertiser funds, colluding devs collect the 50% split) launder spend through Stripe — nothing forged, all caps honored. Marketers with lawyers demand an audit you can't win: provably sealed, not provably human or real.</p>
+      <div class="lbl">Underlying assumption</div>
+      <p>That cryptographic authenticity + a physical ceiling is sufficient — when the system never proved <i>economic</i> legitimacy.</p>
+      <div class="lbl">Early warning</div>
+      <p>Rising share of <code>clean[]</code> receipts clustered just under 96; new pubkeys outpacing plausible install growth; fund and payout sides resolving to overlapping identity/IP/timing clusters.</p>
+    </div>
+
+    <div class="fc" style="--ac:#5eead4">
+      <span class="sev" style="color:var(--danger)">Likelihood: High</span>
+      <div class="num">Failure 06</div>
+      <h4>Built the wrong side first</h4>
+      <p>Demand is the easy side to build against fixtures, so it raced ahead — full monetization spine signing receipts against a thin sliver of pilot devices. First real marketer asks: "how many opted-in devs, and can you prove they're not synthetic?" The answer is below the DP k-anon floor. The differentiated asset exists but can't be reported on without breaking the invariant that is the brand.</p>
+      <div class="lbl">Underlying assumption</div>
+      <p>That demand would pull supply into existence, rather than supply being the precondition the portal can't function without.</p>
+      <div class="lbl">Early warning</div>
+      <p>Marketer-backend commit velocity rising while active device count stays under ~200; first reach query returns "below k-anonymity threshold, cannot emit."</p>
+    </div>
+
+    <div class="fc" style="--ac:#34d399">
+      <span class="sev" style="color:var(--warn)">Severity: High</span>
+      <div class="num">Failure 07</div>
+      <h4>Ad-provider ToS / dependency risk</h4>
+      <p>"Route your Google budget into Sponsorline" becomes the top channel — via OAuth into Google Ads/Meta, reading campaign and audience data to auto-generate equivalents. Both platforms' terms prohibit using API data to build a competing product or export audiences. A compliance review (triggered by your own landing-page copy) issues a 30-day notice; you can't remediate because the feature <i>is</i> the violation. Keys suspended, channel dead overnight.</p>
+      <div class="lbl">Underlying assumption</div>
+      <p>That platform API access is a neutral utility, not a permission the incumbent competitor revokes the moment you use it to take their revenue.</p>
+      <div class="lbl">Early warning</div>
+      <p>The feature's core action is named in the providers' prohibited-uses clauses; one integration becomes &gt;40% of signups while OAuth scopes keep expanding and reviews sit longer each cycle.</p>
+    </div>
+
+    <div class="fc" style="--ac:#60a5fa">
+      <span class="sev" style="color:var(--danger)">Severity: High</span>
+      <div class="num">Failure 08</div>
+      <h4>Scope explosion sinks the launch</h4>
+      <p>"One push" becomes five products at once — <code>auth</code>, <code>payments</code>, campaign-builder, bidding, provider adapters. Integrations stall on others' OAuth/review queues; the bid loop collides with the deterministic <code>auction</code>/<code>prng</code> invariants. The 178-test discipline that was the edge slips to "backfill later." The polished dev-side network can't ship because it's coupled to half-built demand parts.</p>
+      <div class="lbl">Underlying assumption</div>
+      <p>That a two-sided market must launch with both sides complete — so all five demand products precede shipping the finished supply side.</p>
+      <div class="lbl">Early warning</div>
+      <p>Test-to-surface ratio inverts (new packages land sparse/skipped); standups fill with external blockers ("waiting on Meta approval") instead of owned progress.</p>
+    </div>
+
+    <div class="fc" style="--ac:#f87171">
+      <span class="sev" style="color:var(--danger)">Severity: Company-fatal</span>
+      <div class="num">Failure 09</div>
+      <h4>Money-transmitter / regulatory exposure</h4>
+      <p>Eleven good days, then Stripe's risk engine sees the textbook unlicensed-money-transmission shape: customer money into your balance, held for days, fanned out to unrelated third parties across borders. The balance freezes — every funded-but-undisbursed dollar locked. Plus ~140 US devs paid, several over $600, zero W-9s, no 1099 pipeline (explicitly out-of-scope, never enabled). Six-week freeze, chargebacks, dead.</p>
+      <div class="lbl">Underlying assumption</div>
+      <p>That Stripe Connect's payout-side mitigations also absolve you of custodying advertiser funds and being de facto payor.</p>
+      <div class="lbl">Early warning</div>
+      <p>Stripe "verify your business model" emails / a rolling reserve appearing; first US dev crosses $600 cumulative with no W-9 on file and no 1099 line generated.</p>
+    </div>
+
+  </div>
+
+  <footer>
+    Generated 2026-06-14 · Sponsorline premortem · 9 parallel investigators ·
+    Target: marketer self-serve portal + ad-provider spend integration.
+    Transcript: <code>premortem-transcript-2026-06-14.md</code>
+  </footer>
+</div>
+</body>
+</html>
