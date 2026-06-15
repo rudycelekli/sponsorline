@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sponsorline — the only AI-dev ad network that never sees your code</title>
+<meta name="description" content="A consent-first sponsor line for AI coding tools. Raw developer context never leaves the device. A stranger can verify it from a clean clone in one command: npx sponsorline verify." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: oklch(0.985 0.006 70);
+    --paper-sunk: oklch(0.964 0.010 70);
+    --ink: oklch(0.235 0.018 55);
+    --ink-soft: oklch(0.45 0.020 55);
+    --ink-faint: oklch(0.62 0.018 60);
+    --rule: oklch(0.88 0.012 65);
+    --seal: oklch(0.55 0.185 33);
+    --seal-deep: oklch(0.47 0.165 33);
+    --seal-wash: oklch(0.95 0.04 40);
+    --verify: oklch(0.52 0.10 155);
+
+    --serif: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    --sans: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --spine: 70ch;
+    --wide: 1080px;
+  }
+
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;}
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} }
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:17px;
+    line-height:1.6;
+    font-weight:400;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  a{color:var(--seal);text-decoration:none;}
+  a:hover{color:var(--seal-deep);text-decoration:underline;text-underline-offset:3px;}
+
+  ::selection{background:var(--seal-wash);color:var(--ink);}
+
+  :focus-visible{
+    outline:2px solid var(--seal);
+    outline-offset:3px;
+    border-radius:3px;
+  }
+
+  .wrap{max-width:var(--wide);margin:0 auto;padding:0 28px;}
+  .spine{max-width:var(--spine);}
+
+  h1,h2,h3{font-family:var(--serif);font-weight:700;letter-spacing:-0.02em;line-height:1.06;margin:0;}
+  p{margin:0 0 1.1em;}
+  .mono{font-family:var(--mono);}
+
+  /* ---------- top bar ---------- */
+  header.bar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:22px 28px;max-width:var(--wide);margin:0 auto;
+  }
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--serif);font-weight:700;font-size:19px;letter-spacing:-0.02em;}
+  .bar nav{display:flex;gap:26px;align-items:center;}
+  .bar nav a{color:var(--ink-soft);font-size:15px;font-weight:500;}
+  .bar nav a:hover{color:var(--ink);text-decoration:none;}
+  .bar .ghost{
+    font-family:var(--mono);font-size:13px;font-weight:500;
+    color:var(--ink);border:1px solid var(--rule);border-radius:7px;
+    padding:8px 13px;background:var(--paper-sunk);
+  }
+  .bar .ghost:hover{border-color:var(--seal);color:var(--seal-deep);text-decoration:none;}
+  @media (max-width:640px){ .bar nav a:not(.ghost){display:none;} }
+
+  /* ---------- seal mark ---------- */
+  .seal-mark{
+    width:30px;height:30px;border-radius:50%;
+    background:var(--seal);position:relative;flex:none;
+    box-shadow:inset 0 0 0 2px var(--paper), inset 0 0 0 3px var(--seal);
+    display:grid;place-items:center;
+  }
+  .seal-mark::after{
+    content:"";width:11px;height:11px;border-radius:50%;
+    border:1.6px solid var(--paper);
+  }
+
+  /* ---------- hero ---------- */
+  .hero{padding:74px 0 60px;}
+  .eyebrow{
+    font-family:var(--mono);font-size:12.5px;font-weight:500;letter-spacing:0.14em;
+    text-transform:uppercase;color:var(--seal-deep);
+    display:inline-flex;align-items:center;gap:9px;margin-bottom:26px;
+  }
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--seal);}
+  h1.title{
+    font-size:clamp(2.55rem, 6vw, 4.7rem);
+    line-height:0.99;margin:0 0 0.42em;max-width:16ch;
+  }
+  h1.title em{font-style:normal;color:var(--seal);}
+  .lede{font-size:clamp(1.08rem,1.6vw,1.28rem);color:var(--ink-soft);max-width:56ch;margin-bottom:34px;}
+  .cta-row{display:flex;flex-wrap:wrap;gap:14px;align-items:center;}
+  .btn{
+    font-family:var(--sans);font-weight:600;font-size:16px;
+    border-radius:9px;padding:13px 22px;border:1px solid transparent;cursor:pointer;
+    display:inline-flex;align-items:center;gap:9px;transition:background .15s,color .15s,border-color .15s,transform .15s;
+  }
+  .btn-seal{background:var(--seal);color:var(--paper);}
+  .btn-seal:hover{background:var(--seal-deep);color:var(--paper);text-decoration:none;}
+  .btn-seal:active{transform:translateY(1px);}
+  .btn-quiet{background:transparent;color:var(--ink);border-color:var(--rule);}
+  .btn-quiet:hover{border-color:var(--ink-soft);color:var(--ink);text-decoration:none;}
+
+  /* staggered reveal */
+  .reveal{opacity:0;transform:translateY(14px);}
+  .revealed .reveal{animation:rise .9s cubic-bezier(0.16,1,0.3,1) forwards;}
+  .revealed .reveal:nth-child(1){animation-delay:.02s;}
+  .revealed .reveal:nth-child(2){animation-delay:.08s;}
+  .revealed .reveal:nth-child(3){animation-delay:.16s;}
+  .revealed .reveal:nth-child(4){animation-delay:.24s;}
+  .revealed .reveal:nth-child(5){animation-delay:.32s;}
+  @keyframes rise{to{opacity:1;transform:none;}}
+  @media (prefers-reduced-motion: reduce){
+    .reveal{opacity:1;transform:none;}
+    .revealed .reveal{animation:none;}
+  }
+
+  /* ---------- receipt / proof well ---------- */
+  .receipt{
+    margin-top:52px;background:var(--paper-sunk);
+    border:1px solid var(--rule);border-radius:14px;
+    position:relative;overflow:hidden;
+  }
+  .receipt-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 18px;border-bottom:1px solid var(--rule);
+  }
+  .receipt-head .dots{display:flex;gap:7px;}
+  .receipt-head .dots i{width:11px;height:11px;border-radius:50%;background:var(--rule);display:block;}
+  .receipt-head .label{font-family:var(--mono);font-size:12px;color:var(--ink-faint);letter-spacing:0.04em;}
+  .receipt-body{padding:22px 22px 24px;font-family:var(--mono);font-size:14px;line-height:1.85;overflow-x:auto;}
+  .receipt-body .cmt{color:var(--ink-faint);}
+  .receipt-body .prompt{color:var(--seal-deep);}
+  .receipt-body .out{color:var(--ink-soft);}
+  .receipt-body .ok{color:var(--verify);font-weight:700;}
+  .stamp{
+    position:absolute;right:18px;bottom:16px;
+    font-family:var(--serif);font-weight:700;font-size:12px;letter-spacing:0.18em;
+    color:var(--seal);border:2px solid var(--seal);border-radius:8px;
+    padding:7px 11px;transform:rotate(-7deg);opacity:.92;
+    display:flex;align-items:center;gap:7px;background:color-mix(in oklch, var(--seal-wash) 70%, transparent);
+  }
+  @keyframes press{from{transform:rotate(-7deg) scale(1.18);opacity:0;}to{transform:rotate(-7deg) scale(1);opacity:.92;}}
+  .revealed .stamp{animation:press .7s cubic-bezier(0.16,1,0.3,1) .5s both;}
+  @media (prefers-reduced-motion: reduce){ .revealed .stamp{animation:none;} }
+  .copy{
+    font-family:var(--mono);font-size:12px;color:var(--ink-faint);
+    background:transparent;border:1px solid var(--rule);border-radius:6px;
+    padding:5px 9px;cursor:pointer;transition:border-color .15s,color .15s;
+  }
+  .copy:hover{border-color:var(--seal);color:var(--seal-deep);}
+
+  /* ---------- section scaffolding ---------- */
+  section{padding:64px 0;}
+  .rule{height:1px;background:var(--rule);max-width:var(--wide);margin:0 auto;}
+  .kicker{
+    font-family:var(--mono);font-size:12.5px;letter-spacing:0.13em;text-transform:uppercase;
+    color:var(--seal-deep);margin-bottom:16px;
+  }
+  h2.head{font-size:clamp(1.7rem,3.2vw,2.5rem);margin-bottom:0.5em;max-width:18ch;}
+  .sub{color:var(--ink-soft);font-size:1.06rem;max-width:60ch;}
+
+  /* proof list */
+  .proof{list-style:none;padding:0;margin:30px 0 0;display:grid;gap:2px;}
+  .proof li{
+    display:grid;grid-template-columns:26px 1fr;gap:16px;align-items:start;
+    padding:20px 0;border-top:1px solid var(--rule);
+  }
+  .proof li:last-child{border-bottom:1px solid var(--rule);}
+  .check{
+    width:24px;height:24px;border-radius:50%;border:1.6px solid var(--verify);
+    display:grid;place-items:center;margin-top:2px;flex:none;
+  }
+  .check svg{width:13px;height:13px;stroke:var(--verify);stroke-width:2.4;fill:none;}
+  .proof b{font-family:var(--serif);font-weight:600;font-size:1.12rem;display:block;margin-bottom:3px;letter-spacing:-0.01em;}
+  .proof span{color:var(--ink-soft);font-size:0.99rem;}
+  .proof .mono{color:var(--ink);font-size:0.92em;}
+
+  /* the "does not prove" honest note */
+  .caveat{
+    margin-top:34px;border:1px solid var(--rule);border-radius:12px;
+    background:var(--paper-sunk);padding:24px 26px;max-width:64ch;
+  }
+  .caveat .t{font-family:var(--serif);font-weight:600;font-size:1.05rem;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
+  .caveat .t .q{color:var(--seal);font-size:1.3rem;line-height:1;}
+  .caveat p{margin:0;color:var(--ink-soft);font-size:0.98rem;}
+
+  /* how it works steps */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:34px;margin-top:38px;}
+  @media (max-width:820px){ .steps{grid-template-columns:1fr;gap:30px;} }
+  .step .n{font-family:var(--mono);font-size:13px;color:var(--seal-deep);letter-spacing:0.1em;margin-bottom:12px;}
+  .step h3{font-size:1.22rem;margin-bottom:0.45em;}
+  .step p{color:var(--ink-soft);font-size:0.99rem;margin:0;}
+
+  /* earnings split */
+  .split{display:grid;grid-template-columns:1.1fr 0.9fr;gap:48px;align-items:center;}
+  @media (max-width:820px){ .split{grid-template-columns:1fr;gap:28px;} }
+  .bar-split{display:flex;border-radius:11px;overflow:hidden;border:1px solid var(--rule);height:64px;font-family:var(--mono);font-weight:700;font-size:15px;}
+  .bar-split .you{background:var(--seal);color:var(--paper);flex:1;display:grid;place-items:center;}
+  .bar-split .us{background:var(--paper-sunk);color:var(--ink-soft);flex:1;display:grid;place-items:center;}
+
+  /* guardrails */
+  .guards{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:38px;}
+  @media (max-width:820px){ .guards{grid-template-columns:1fr;} }
+  .guard{border:1px solid var(--rule);border-radius:13px;padding:28px;background:var(--paper);}
+  .guard .tag{font-family:var(--mono);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--seal-deep);margin-bottom:14px;}
+  .guard h3{font-size:1.24rem;margin-bottom:0.5em;}
+  .guard p{color:var(--ink-soft);font-size:0.99rem;margin:0 0 14px;}
+  .guard .ref{font-family:var(--mono);font-size:12.5px;color:var(--ink-faint);}
+
+  /* CTA footer */
+  .endcta{background:var(--ink);color:var(--paper);border-radius:20px;padding:60px 44px;text-align:center;margin:24px auto 0;max-width:var(--wide);}
+  .endcta h2{color:var(--paper);font-size:clamp(1.9rem,3.6vw,2.8rem);margin-bottom:0.4em;}
+  .endcta p{color:oklch(0.82 0.012 70);max-width:50ch;margin:0 auto 28px;}
+  .endcta .cmd{
+    font-family:var(--mono);font-size:16px;color:var(--paper);
+    background:oklch(0.30 0.018 55);border:1px solid oklch(0.40 0.02 55);
+    border-radius:10px;padding:15px 20px;display:inline-flex;gap:12px;align-items:center;
+  }
+  .endcta .cmd .copy{color:oklch(0.78 0.01 70);border-color:oklch(0.42 0.02 55);}
+  .endcta .cmd .copy:hover{border-color:var(--seal);color:var(--paper);}
+
+  footer.foot{max-width:var(--wide);margin:0 auto;padding:46px 28px 60px;color:var(--ink-faint);font-size:14px;display:flex;flex-wrap:wrap;gap:20px;justify-content:space-between;align-items:center;}
+  footer.foot a{color:var(--ink-soft);}
+  footer.foot .links{display:flex;gap:22px;flex-wrap:wrap;}
+
+  @media (max-width:540px){
+    body{font-size:16px;}
+    section{padding:50px 0;}
+    .hero{padding:48px 0 40px;}
+    .endcta{padding:44px 24px;border-radius:16px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="brand"><span class="seal-mark" aria-hidden="true"></span> Sponsorline</div>
+  <nav>
+    <a href="#proof">Proof</a>
+    <a href="#how">How it works</a>
+    <a href="#earn">Earnings</a>
+    <a href="#moat">Guardrails</a>
+    <a class="ghost" href="#verify">npx sponsorline verify</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap" id="hero">
+      <div class="spine">
+        <div class="eyebrow reveal">Consent-first ad network for AI coding tools</div>
+        <h1 class="title reveal">The only AI-dev ad network that <em>never sees your code.</em></h1>
+        <p class="lede reveal">Your status bar earns 50%. Raw developer context never leaves the device. The auction sees only a coarse, allowlisted interest vector. A stranger can verify both claims from a clean clone, in one command.</p>
+        <div class="cta-row reveal">
+          <a class="btn btn-seal" href="#verify">Read the proof</a>
+          <a class="btn btn-quiet" href="#how">How it works</a>
+        </div>
+      </div>
+
+      <div class="receipt reveal" id="verify" aria-label="Verification transcript">
+        <div class="receipt-head">
+          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="label">stranger-verification &middot; clean clone</span>
+          <button class="copy" data-copy="git clone <repo> && cd sponsorline
+npm install && npm run build
+npx sponsorline verify">Copy</button>
+        </div>
+        <div class="receipt-body">
+<span class="cmt"># Don't trust us. Run it.</span>
+<span class="prompt">$</span> git clone &lt;repo&gt; &amp;&amp; cd sponsorline
+<span class="prompt">$</span> npm install &amp;&amp; npm run build
+<span class="prompt">$</span> npx sponsorline verify
+<span class="out">replaying every auction to its recorded outcome ...</span>
+<span class="out">asserting 0 bytes of code / path in egress ...</span>
+<span class="out">checking the hash chain head signature ...</span>
+<span class="ok">&#10003; verified</span> <span class="out">&middot; 1000 impressions &middot; 0 bytes egress &middot; 12ms p95</span>
+        </div>
+        <div class="stamp" aria-hidden="true"><span class="seal-mark" style="width:14px;height:14px;box-shadow:inset 0 0 0 1px var(--seal-wash), inset 0 0 0 1.5px var(--seal);"></span> VERIFIED</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+
+  <!-- PROOF: what verify proves -->
+  <section id="proof">
+    <div class="wrap spine">
+      <div class="kicker">What verify proves</div>
+      <h2 class="head">Promises you can re-run, against a key that can check everything and forge nothing.</h2>
+      <p class="sub">Verification runs only against the published public key. The signing secret never leaves your device, so a reviewer can confirm every property below without the ability to fabricate a single entry.</p>
+
+      <ul class="proof">
+        <li>
+          <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="4,12 10,18 20,6"/></svg></span>
+          <div><b>Zero code egress</b><span>No source, file path, or buffer ever leaves the device. Only allowlisted atoms (<span class="mono">lang:* framework:* task:*</span>) are emitted, and verify re-asserts 0 bytes of code across every impression.</span></div>
+        </li>
+        <li>
+          <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="4,12 10,18 20,6"/></svg></span>
+          <div><b>Consent-gated display</b><span>Nothing renders until you opt in, within a signed scope and validity window. <span class="mono">sponsorline off</span> revokes on the spot.</span></div>
+        </li>
+        <li>
+          <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="4,12 10,18 20,6"/></svg></span>
+          <div><b>Tamper-evident history</b><span>Each impression embeds the prior payload's SHA-256. One Ed25519 signature over the head authenticates the whole ordered chain, so any insert, delete, reorder, or edit breaks verification.</span></div>
+        </li>
+        <li>
+          <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="4,12 10,18 20,6"/></svg></span>
+          <div><b>Replayable auctions</b><span>Every auction replays deterministically to its recorded outcome. 100% reproducible, machine-independent.</span></div>
+        </li>
+        <li>
+          <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="4,12 10,18 20,6"/></svg></span>
+          <div><b>No binary patching</b><span>Integration is only through official, documented extension points (Claude Code <span class="mono">statusLine</span>, a Cursor adapter). No patching code exists in the tree.</span></div>
+        </li>
+      </ul>
+
+      <div class="caveat">
+        <div class="t"><span class="q" aria-hidden="true">&#8801;</span> What it does not prove on its own</div>
+        <p>Verify proves internal consistency under a given key, not whose device produced the log. Publish your public key through a channel a reviewer already trusts (your repo, a signed release) and verify then proves authenticity of origin too. This is the standard public-key trust anchor, stated plainly. We do not ask to be believed.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+
+  <!-- HOW IT WORKS -->
+  <section id="how">
+    <div class="wrap">
+      <div class="spine">
+        <div class="kicker">How it works</div>
+        <h2 class="head">A hash chain, a three-prefix allowlist, and a seal.</h2>
+        <p class="sub">The mechanism is small enough to read in an afternoon and strict enough that the privacy claim is mechanical, not editorial.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="n">01 / SIGNAL</div>
+          <h3>Coarse interest, on device</h3>
+          <p>Local context is reduced to a versioned, allowlisted vector. Only <span class="mono">lang:</span>, <span class="mono">framework:</span>, and <span class="mono">task:</span> atoms can ever be emitted. A targeting predicate asking for anything else is rejected at ingestion.</p>
+        </div>
+        <div class="step">
+          <div class="n">02 / AUCTION</div>
+          <h3>Deterministic second-price</h3>
+          <p>A seeded, replayable auction picks the winning sponsor line. Each impression is bound to your signed consent record and appended to a local JSONL witness log, chained by SHA-256.</p>
+        </div>
+        <div class="step">
+          <div class="n">03 / SEAL</div>
+          <h3>One signature, whole history</h3>
+          <p>A single Ed25519 signature over the chain head vouches for the entire ordered log. Verify costs O(n) cheap hashing plus one signature check, staying well under two seconds even at multi-year volume.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+
+  <!-- EARNINGS -->
+  <section id="earn">
+    <div class="wrap">
+      <div class="split">
+        <div class="spine">
+          <div class="kicker">Your status bar earns</div>
+          <h2 class="head">Fifty-fifty. Counted from signed receipts, never estimated.</h2>
+          <p class="sub">That little "Thinking..." line becomes a tiny, clearly labeled sponsor message that pays you half. Reach is counted from per-device Ed25519-sealed receipts: each seal is verified, deduplicated per device and epoch, and a campaign too thin to be anonymous is withheld, never sold as reach.</p>
+        </div>
+        <div>
+          <div class="bar-split" role="img" aria-label="Revenue split: 50 percent to you, 50 percent to Sponsorline">
+            <span class="you">YOU &middot; 50%</span>
+            <span class="us">SPONSORLINE &middot; 50%</span>
+          </div>
+          <p style="margin-top:16px;color:var(--ink-faint);font-size:13.5px;" class="mono">npx sponsorline earnings &middot; npx sponsorline why</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+
+  <!-- MOAT / GUARDRAILS -->
+  <section id="moat">
+    <div class="wrap">
+      <div class="spine">
+        <div class="kicker">Guardrails, enforced</div>
+        <h2 class="head">We made the bad outcomes impossible, then wrote the test that proves it.</h2>
+        <p class="sub">The two failure modes that would quietly destroy this product are not policy promises. They are invariants the build refuses to violate.</p>
+      </div>
+      <div class="guards">
+        <div class="guard">
+          <div class="tag">Static egress guard</div>
+          <h3>The moat cannot be edited away</h3>
+          <p>Routing spend through an ad-provider structurally requires importing their identity graph. A source scan fails the build if any file references an ad, tracking, or analytics domain, or a cross-site identity token. The only external host allowed is the payout rail.</p>
+          <div class="ref">packages/core/test/egress-guard.test.ts</div>
+        </div>
+        <div class="guard">
+          <div class="tag">k-anon supply floor</div>
+          <h3>Thin reach is withheld, not sold</h3>
+          <p>A campaign that reaches too few distinct devices to be anonymous or meaningful is never presented as a payable number. The aggregate withholds anything under a 200-device floor and surfaces it as suppressed instead.</p>
+          <div class="ref">SUPPLY_FLOOR_DEVICES = 200</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- END CTA -->
+  <section style="padding-top:20px;">
+    <div class="endcta">
+      <h2>Approve it after reading the code, not after trusting a vendor.</h2>
+      <p>Clone it, build it, and run the one command that replays every auction and re-checks every privacy invariant.</p>
+      <div class="cmd">
+        <span><span style="color:var(--seal);">$</span> npx sponsorline verify</span>
+        <button class="copy" data-copy="npx sponsorline verify">Copy</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="brand" style="font-size:16px;"><span class="seal-mark" aria-hidden="true" style="width:22px;height:22px;"></span> Sponsorline</div>
+  <div class="links">
+    <a href="#proof">Proof</a>
+    <a href="#how">How it works</a>
+    <a href="#moat">Guardrails</a>
+    <a href="../SECURITY.md">Security</a>
+    <a href="../docs/security/threat-model.md">Threat model</a>
+    <a href="../LICENSE">License</a>
+  </div>
+  <div class="mono" style="font-size:12.5px;">Source-available client &middot; PolyForm Shield &middot; raw context never leaves the device.</div>
+</footer>
+
+<script>
+  // staggered reveal once the hero is in view
+  (function(){
+    var hero = document.getElementById('hero');
+    if(!hero) return;
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduce){ hero.classList.add('revealed'); return; }
+    requestAnimationFrame(function(){ hero.classList.add('revealed'); });
+  })();
+
+  // copy buttons
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var text = btn.getAttribute('data-copy') || '';
+      navigator.clipboard && navigator.clipboard.writeText(text).then(function(){
+        var prev = btn.textContent;
+        btn.textContent = 'Copied';
+        setTimeout(function(){ btn.textContent = prev; }, 1400);
+      }).catch(function(){});
+    });
+  });
+</script>
+
+</body>
+</html>
