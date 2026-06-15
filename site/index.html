@@ -247,6 +247,58 @@
     .hero{padding:48px 0 40px;}
     .endcta{padding:44px 24px;border-radius:16px;}
   }
+
+  /* ---------- marketer preview ---------- */
+  .pv-egress{display:flex;align-items:center;gap:11px;justify-content:center;font-family:var(--mono);font-size:13px;color:var(--verify);border:1px solid color-mix(in oklch, var(--verify) 35%, var(--rule));background:color-mix(in oklch, var(--verify) 8%, var(--paper));border-radius:9px;padding:10px 14px;margin:22px 0 14px;}
+  .pv-egress::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--verify);flex:none;}
+  .pv-drop{margin:0 0 18px;border:1.5px dashed var(--rule);border-radius:14px;background:var(--paper-sunk);padding:42px 28px;text-align:center;cursor:pointer;transition:border-color .15s, background .15s;display:block;}
+  .pv-drop:hover,.pv-drop.hot{border-color:var(--seal);background:var(--seal-wash);}
+  .pv-drop .big{font-family:var(--serif);font-weight:700;font-size:1.2rem;margin-bottom:6px;color:var(--ink);}
+  .pv-drop .sub2{color:var(--ink-soft);font-size:.95rem;margin:0;}
+  #pv-file{display:none;}
+  .pv-panel{border:1px solid var(--rule);border-radius:14px;background:var(--paper);overflow:hidden;margin:18px 0;}
+  .pv-panel-h{padding:13px 18px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);background:var(--paper-sunk);}
+  .pv-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px 22px;padding:18px;}
+  .pv-ctrl{display:flex;flex-direction:column;gap:6px;}
+  .pv-ctrl > label{font-size:13px;font-weight:600;color:var(--ink-soft);display:flex;justify-content:space-between;gap:8px;}
+  .pv-ctrl label .v{font-family:var(--mono);color:var(--seal-deep);font-weight:700;}
+  .pv-ctrl input[type=range]{width:100%;accent-color:var(--seal);}
+  .pv-toggle{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);font-weight:500;}
+  .pv-toggle input[type=checkbox]{width:17px;height:17px;accent-color:var(--seal);}
+  .pv-screen-wrap{padding:18px;}
+  .pv-termbar{display:flex;align-items:center;gap:8px;padding:0 0 12px;}
+  .pv-termbar .dot{width:11px;height:11px;border-radius:50%;}
+  .pv-termbar .dot:nth-child(1){background:oklch(0.7 0.16 25);}
+  .pv-termbar .dot:nth-child(2){background:oklch(0.82 0.14 85);}
+  .pv-termbar .dot:nth-child(3){background:oklch(0.74 0.13 150);}
+  .pv-termbar .tt{margin-left:8px;font-family:var(--mono);font-size:12px;color:var(--ink-faint);}
+  pre#pv-screen{background:#0a0c10;color:#cfd6e0;margin:0;border-radius:10px;padding:14px 16px;overflow:auto;white-space:pre;letter-spacing:0;font-family:var(--mono);font-weight:500;line-height:1.0;font-size:7px;min-height:120px;box-shadow:0 10px 40px oklch(0.2 0.02 55 / .18);}
+  pre#pv-screen.empty{display:grid;place-items:center;color:#5a6678;font-size:13px;}
+  .pv-playrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:14px 18px 18px;}
+  .pv-frameno{font-family:var(--mono);font-size:13px;color:var(--ink-faint);margin-left:auto;}
+  .pv-progress{height:4px;background:var(--rule);border-radius:99px;overflow:hidden;margin:0 18px;display:none;}
+  .pv-progress.on{display:block;}
+  .pv-progress > span{display:block;height:100%;width:0;background:var(--seal);transition:width .12s linear;}
+  .pv-status{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);padding:6px 18px 0;min-height:1.2em;}
+  .pv-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:14px;overflow:hidden;margin:18px 0;}
+  .pv-fact{background:var(--paper);padding:16px 18px;}
+  .pv-fact .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px;}
+  .pv-fact .val{font-family:var(--serif);font-weight:700;font-size:1.4rem;color:var(--ink);line-height:1;}
+  .pv-fact .val.ok{color:var(--verify);}
+  .pv-fact .val small{font-size:.8rem;font-weight:500;color:var(--ink-soft);}
+  details.pv-raw{border:1px solid var(--rule);border-radius:12px;margin:18px 0 0;overflow:hidden;}
+  details.pv-raw summary{cursor:pointer;padding:13px 18px;font-family:var(--mono);font-size:13px;color:var(--ink-soft);background:var(--paper-sunk);list-style:none;}
+  details.pv-raw summary::-webkit-details-marker{display:none;}
+  details.pv-raw summary:hover{color:var(--ink);}
+  details.pv-raw pre{margin:0;padding:16px 18px;font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--ink-soft);overflow:auto;max-height:280px;white-space:pre-wrap;word-break:break-all;}
+  .pv-tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:24px 0 0;}
+  .pv-tier{border:1px solid var(--rule);border-radius:14px;padding:20px;background:var(--paper);}
+  .pv-tier.feature{border-color:color-mix(in oklch, var(--seal) 45%, var(--rule));box-shadow:0 8px 30px oklch(0.55 0.185 33 / .08);}
+  .pv-tier .name{font-family:var(--serif);font-weight:700;font-size:1.15rem;margin-bottom:4px;}
+  .pv-tier .who{font-size:13.5px;color:var(--ink-faint);margin-bottom:14px;}
+  .pv-tier ul{margin:0;padding-left:18px;font-size:14px;color:var(--ink-soft);}
+  .pv-tier ul li{margin-bottom:6px;}
+  .pv-soon{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--seal-deep);border:1px solid color-mix(in oklch, var(--seal) 40%, var(--rule));border-radius:99px;padding:3px 10px;margin-left:10px;vertical-align:middle;}
 </style>
 </head>
 <body>
@@ -259,7 +311,7 @@
     <a href="#earn">Earnings</a>
     <a href="#settle">Settlement</a>
     <a href="#moat">Guardrails</a>
-    <a href="preview.html">Preview a clip</a>
+    <a href="#preview">Preview a clip</a>
     <a class="ghost" href="#verify">npx sponsorline verify</a>
   </nav>
 </header>
@@ -479,6 +531,104 @@ npx sponsorline verify">Copy</button>
     </div>
   </section>
 
+  <div class="rule"></div>
+
+  <!-- MARKETER PREVIEW -->
+  <section id="preview">
+    <div class="wrap">
+      <div class="spine">
+        <div class="kicker">For marketers</div>
+        <h2 class="head">Drop an mp4. See exactly what a developer sees.</h2>
+        <p class="sub">You think in video. The terminal renders text. This translates your clip the way the ingest pipeline does: a sealed text-plus-palette creative a developer can watch in their status line while a build runs, if they opted in. The color is generated on their device at display time, never baked into the sealed bytes. The translation runs entirely in this browser. Nothing is uploaded.</p>
+      </div>
+
+      <div class="pv-egress" id="pv-egress">Runs entirely in this browser. 0 bytes uploaded. Your clip never leaves this device.</div>
+
+      <label class="pv-drop" id="pv-drop" for="pv-file">
+        <div class="big">Drop a video here, or click to choose</div>
+        <p class="sub2">mp4 &middot; webm &middot; gif &middot; mov &nbsp;&middot;&nbsp; decoded with <span class="mono">&lt;video&gt; + &lt;canvas&gt;</span>, processed locally</p>
+        <input type="file" id="pv-file" accept="video/*,image/gif" />
+      </label>
+
+      <div class="pv-panel">
+        <div class="pv-panel-h">Translation controls</div>
+        <div class="pv-controls">
+          <div class="pv-ctrl"><label>Columns <span class="v" id="pv-vCols">120</span></label><input type="range" id="pv-cCols" min="40" max="200" step="4" value="120"></div>
+          <div class="pv-ctrl"><label>Frames / sec <span class="v" id="pv-vFps">12</span></label><input type="range" id="pv-cFps" min="4" max="24" step="1" value="12"></div>
+          <div class="pv-ctrl"><label>Seconds <span class="v" id="pv-vSecs">6</span></label><input type="range" id="pv-cSecs" min="1" max="15" step="1" value="6"></div>
+          <div class="pv-ctrl"><label>Palette colors <span class="v" id="pv-vColors">256</span></label><input type="range" id="pv-cColors" min="8" max="256" step="8" value="256"></div>
+          <div class="pv-ctrl"><label>&nbsp;</label><span class="pv-toggle"><input type="checkbox" id="pv-cColor" checked> <label for="pv-cColor" style="margin:0">Color layer</label></span></div>
+          <div class="pv-ctrl"><label>&nbsp;</label><span class="pv-toggle"><input type="checkbox" id="pv-cInvert"> <label for="pv-cInvert" style="margin:0">Invert (light terminal)</label></span></div>
+        </div>
+      </div>
+
+      <div class="pv-panel">
+        <div class="pv-panel-h">On-device render</div>
+        <div class="pv-screen-wrap">
+          <div class="pv-termbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="tt">developer terminal &middot; decoded from sealed bytes</span></div>
+          <pre id="pv-screen" class="empty">drop a clip to begin</pre>
+        </div>
+        <div class="pv-progress" id="pv-prog"><span id="pv-progbar"></span></div>
+        <div class="pv-status" id="pv-status"></div>
+        <div class="pv-playrow">
+          <button class="btn btn-seal" id="pv-play" disabled>Pause</button>
+          <button class="btn btn-quiet" id="pv-step" disabled>Step</button>
+          <span class="pv-frameno" id="pv-frameno"></span>
+        </div>
+      </div>
+
+      <div class="pv-facts">
+        <div class="pv-fact"><div class="k">Uploaded</div><div class="val ok" id="pv-fUp">0 bytes</div></div>
+        <div class="pv-fact"><div class="k">Palette</div><div class="val" id="pv-fPal">&mdash;</div></div>
+        <div class="pv-fact"><div class="k">Frames</div><div class="val" id="pv-fFrames">&mdash;</div></div>
+        <div class="pv-fact"><div class="k">Sealed size</div><div class="val" id="pv-fSize">&mdash;</div></div>
+        <div class="pv-fact"><div class="k">ANSI in sealed bytes</div><div class="val ok" id="pv-fAnsi">&mdash;</div></div>
+      </div>
+
+      <details class="pv-raw">
+        <summary id="pv-rawSummary">View the sealed creative bytes (the exact JSON the auction and witness chain would commit to)</summary>
+        <pre id="pv-rawJson">No creative yet.</pre>
+      </details>
+
+      <div class="spine" style="margin-top:40px;">
+        <div class="kicker">Distribution plans <span class="pv-soon">Planned</span></div>
+        <h2 class="head" style="font-size:clamp(1.4rem,2.6vw,2rem);">Bring a creative. Pick how far it travels.</h2>
+        <p class="sub">A signed-in marketer plan is on the roadmap, gated behind real opted-in supply. We will not hold balances or touch your Google or Meta ad data. Billing routes through Stripe destination charges, and reach is counted from per-device signed receipts, never estimated.</p>
+      </div>
+      <div class="pv-tiers">
+        <div class="pv-tier">
+          <div class="name">Text</div>
+          <div class="who">Single sponsor line</div>
+          <ul>
+            <li>One static, allowlisted sponsor line</li>
+            <li>Contextual targeting by language and framework</li>
+            <li>Reach report from signed receipts</li>
+          </ul>
+        </div>
+        <div class="pv-tier feature">
+          <div class="name">Animated</div>
+          <div class="who">Sealed frames creative</div>
+          <ul>
+            <li>Everything in Text</li>
+            <li>Up to 256-color sealed frames, rendered on-device</li>
+            <li>This in-browser preview, before you ever submit</li>
+          </ul>
+        </div>
+        <div class="pv-tier">
+          <div class="name">Distribution+</div>
+          <div class="who">Wider, prioritized reach</div>
+          <ul>
+            <li>Everything in Animated</li>
+            <li>Higher auction priority across more segments</li>
+            <li>Concierge onboarding while supply scales</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="rule"></div>
+
   <!-- END CTA -->
   <section style="padding-top:20px;">
     <div class="endcta">
@@ -528,6 +678,236 @@ npx sponsorline verify">Copy</button>
       }).catch(function(){});
     });
   });
+</script>
+
+<video id="pv-vid" playsinline muted style="display:none"></video>
+<canvas id="pv-cv" style="display:none"></canvas>
+<script>
+"use strict";
+/* Client-side port of scripts/video2frames.mjs. Same luminance ramp, adaptive
+   median-cut palette, Floyd-Steinberg dithering, and OKLab perceptual matching.
+   The clip is decoded with <video>+<canvas>; nothing is ever sent off-device.
+   We build the SAME sealed creative JSON, then render FROM that JSON, so this
+   shows the real seal -> decode round trip. */
+(function(){
+  var ALPHA_BASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  var ALPHA_EXT = "";
+  for (var ai=0; ai<192; ai++) ALPHA_EXT += String.fromCharCode(0x100+ai);
+  var COLOR_ALPHABET = ALPHA_BASE + ALPHA_EXT;
+  var RAMP = " .,:;irsXA253hMHGS#9B&@";
+
+  function srgb2lin(c){ c/=255; return c<=0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4); }
+  function rgb2oklab(r,g,b){
+    var lr=srgb2lin(r),lg=srgb2lin(g),lb=srgb2lin(b);
+    var l=0.4122214708*lr+0.5363325363*lg+0.0514459929*lb;
+    var m=0.2119034982*lr+0.6806995451*lg+0.1073969566*lb;
+    var s=0.0883024619*lr+0.2817188376*lg+0.6299787005*lb;
+    var l_=Math.cbrt(l),m_=Math.cbrt(m),s_=Math.cbrt(s);
+    return [0.2104542553*l_+0.793617785*m_-0.0040720468*s_,
+            1.9779984951*l_-2.428592205*m_+0.4505937099*s_,
+            0.0259040371*l_+0.7827717662*m_-0.808675766*s_];
+  }
+  function nearestColor(pal,L,A,B){
+    var best=0,bd=Infinity;
+    for(var i=0;i<pal.length;i++){var c=pal[i],dL=L-c[0],dA=A-c[1],dB=B-c[2],d=dL*dL+dA*dA+dB*dB;if(d<bd){bd=d;best=i;}}
+    return best;
+  }
+  function medianCutPalette(rgbFrames, maxColors){
+    var px=[],target=40000,total=0,f;
+    for(f=0;f<rgbFrames.length;f++) total+=rgbFrames[f].length/3;
+    var step=Math.max(1,Math.floor(total/target)),k=0;
+    for(f=0;f<rgbFrames.length;f++){
+      var fr=rgbFrames[f],n=fr.length/3;
+      for(var i=0;i<n;i++,k++){ if(k%step!==0) continue; var p=i*3; px.push([fr[p],fr[p+1],fr[p+2]]); }
+    }
+    if(px.length===0) return [[0,0,0]];
+    var boxes=[px];
+    while(boxes.length<maxColors){
+      var bi=-1,bestRange=-1,bestCh=0;
+      for(var bx=0;bx<boxes.length;bx++){
+        var box=boxes[bx]; if(box.length<2) continue;
+        for(var ch=0;ch<3;ch++){
+          var lo=255,hi=0;
+          for(var qi=0;qi<box.length;qi++){var q=box[qi];if(q[ch]<lo)lo=q[ch];if(q[ch]>hi)hi=q[ch];}
+          var range=hi-lo; if(range>bestRange){bestRange=range;bi=bx;bestCh=ch;}
+        }
+      }
+      if(bi<0) break;
+      var b2=boxes[bi]; b2.sort(function(a,b){return a[bestCh]-b[bestCh];});
+      var mid=b2.length>>1; boxes.splice(bi,1,b2.slice(0,mid),b2.slice(mid));
+    }
+    return boxes.map(function(box){
+      var r=0,g=0,b=0; for(var i=0;i<box.length;i++){r+=box[i][0];g+=box[i][1];b+=box[i][2];}
+      var n=box.length||1; return [Math.round(r/n),Math.round(g/n),Math.round(b/n)];
+    });
+  }
+  function frameToLayers(buf,cols,rows,ramp,invert,palette,paletteLab){
+    var stride=cols*rows*3,work=new Float32Array(stride),i;
+    for(i=0;i<stride;i++) work[i]=buf[i];
+    function diffuse(xx,yy,er,eg,eb,w){ if(xx<0||xx>=cols||yy<0||yy>=rows) return; var q=(yy*cols+xx)*3; work[q]+=er*w;work[q+1]+=eg*w;work[q+2]+=eb*w; }
+    var glyph="",color="";
+    for(var y=0;y<rows;y++){
+      var gl="",cl="";
+      for(var x=0;x<cols;x++){
+        var base=(y*cols+x)*3;
+        var lum=(0.2126*buf[base]+0.7152*buf[base+1]+0.0722*buf[base+2])/255;
+        if(invert) lum=1-lum;
+        var idx=Math.floor(lum*ramp.length); if(idx>=ramp.length) idx=ramp.length-1; if(idx<0) idx=0;
+        gl+=ramp[idx];
+        var r=work[base],g=work[base+1],b=work[base+2];
+        var lab=rgb2oklab(r,g,b),ci=nearestColor(paletteLab,lab[0],lab[1],lab[2]);
+        cl+=COLOR_ALPHABET[ci];
+        var pc=palette[ci],er=r-pc[0],eg=g-pc[1],eb=b-pc[2];
+        diffuse(x+1,y,er,eg,eb,7/16); diffuse(x-1,y+1,er,eg,eb,3/16); diffuse(x,y+1,er,eg,eb,5/16); diffuse(x+1,y+1,er,eg,eb,1/16);
+      }
+      glyph+=(y?"\n":"")+gl; color+=(y?"\n":"")+cl;
+    }
+    return {glyph:glyph,color:color};
+  }
+  function frameToGlyphOnly(buf,cols,rows,ramp,invert){
+    var out="";
+    for(var y=0;y<rows;y++){
+      var line="";
+      for(var x=0;x<cols;x++){
+        var base=(y*cols+x)*3;
+        var lum=(0.2126*buf[base]+0.7152*buf[base+1]+0.0722*buf[base+2])/255;
+        if(invert) lum=1-lum;
+        var idx=Math.floor(lum*ramp.length); if(idx>=ramp.length) idx=ramp.length-1; if(idx<0) idx=0;
+        line+=ramp[idx];
+      }
+      out+=(y?"\n":"")+line;
+    }
+    return out;
+  }
+  var COLOR_INDEX=(function(){var m=new Map();for(var i=0;i<COLOR_ALPHABET.length;i++)m.set(COLOR_ALPHABET[i],i);return m;})();
+  function esc(t){return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+  function renderFrameHtml(spec,fi){
+    var glyph=spec.frames[fi].split("\n");
+    if(!spec.palette||!spec.colors) return esc(spec.frames[fi]);
+    var color=spec.colors[fi].split("\n"),html="";
+    for(var y=0;y<glyph.length;y++){
+      var gl=glyph[y],cl=color[y]||"",run="",runCi=-1;
+      var flush=function(){ if(run==="") return; var pc=spec.palette[runCi]; if(pc) html+='<span style="color:rgb('+pc[0]+','+pc[1]+','+pc[2]+')">'+esc(run)+'</span>'; else html+=esc(run); run=""; };
+      for(var x=0;x<gl.length;x++){
+        var ch=cl[x], ci = (ch!==undefined && COLOR_INDEX.has(ch)) ? COLOR_INDEX.get(ch) : -1;
+        if(ci!==runCi){ flush(); runCi=ci; }
+        run+=gl[x];
+      }
+      flush();
+      html+=(y<glyph.length-1?"\n":"");
+    }
+    return html;
+  }
+
+  var vid=document.getElementById("pv-vid"), cv=document.getElementById("pv-cv");
+  var cvx=cv.getContext("2d",{willReadFrequently:true});
+  function seekTo(t){ return new Promise(function(resolve){ var done=function(){ vid.removeEventListener("seeked",done); resolve(); }; vid.addEventListener("seeked",done); vid.currentTime=t; }); }
+
+  var spec=null, frameHtml=[], playIdx=0, timer=null, busy=false;
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var el=function(id){return document.getElementById(id);};
+  var screen=el("pv-screen"), statusEl=el("pv-status"), prog=el("pv-prog"), progbar=el("pv-progbar");
+  function setStatus(s){ statusEl.textContent=s||""; }
+  function bindRange(id,vid2){ var r=el(id),v=el(vid2); var f=function(){v.textContent=r.value;}; r.addEventListener("input",f); f(); }
+  bindRange("pv-cCols","pv-vCols"); bindRange("pv-cFps","pv-vFps"); bindRange("pv-cSecs","pv-vSecs"); bindRange("pv-cColors","pv-vColors");
+
+  function fitScreen(cols){ var paneW=screen.clientWidth-32; var fs=Math.floor((paneW/cols)/0.62); fs=Math.max(4,Math.min(14,fs)); screen.style.fontSize=fs+"px"; }
+  function drawFrame(){ if(!spec) return; screen.classList.remove("empty"); screen.innerHTML=frameHtml[playIdx]; el("pv-frameno").textContent="frame "+(playIdx+1)+" / "+frameHtml.length; }
+  function tick(){ playIdx=(playIdx+1)%frameHtml.length; drawFrame(); }
+  function stopPlay(){ if(timer) clearInterval(timer); timer=null; el("pv-play").textContent="Play"; }
+  function startPlay(){ stopPlay(); if(!spec) return; drawFrame(); if(reduceMotion) return; el("pv-play").textContent="Pause"; timer=setInterval(tick,1000/spec.fps); }
+
+  el("pv-play").onclick=function(){ if(!spec) return; if(timer) stopPlay(); else startPlay(); };
+  el("pv-step").onclick=function(){ if(!spec) return; stopPlay(); tick(); };
+
+  function process(file){
+    if(busy) return Promise.resolve();
+    busy=true; stopPlay();
+    el("pv-play").disabled=true; el("pv-step").disabled=true;
+    setStatus("Loading clip into the browser (not uploaded)...");
+    prog.classList.add("on"); progbar.style.width="0%";
+    var url=URL.createObjectURL(file);
+    vid.src=url;
+    return new Promise(function(res,rej){ vid.onloadedmetadata=res; vid.onerror=function(){rej(new Error("Could not decode this file in the browser."));}; })
+      .then(function(){
+        var cols=+el("pv-cCols").value, fps=+el("pv-cFps").value, secs=+el("pv-cSecs").value, colors=+el("pv-cColors").value;
+        var withColor=el("pv-cColor").checked, invert=el("pv-cInvert").checked;
+        var vw=vid.videoWidth||16, vh=vid.videoHeight||9;
+        var rows=Math.max(1,Math.round((cols*vh)/vw/2));
+        cv.width=cols; cv.height=rows; cvx.imageSmoothingEnabled=true; cvx.imageSmoothingQuality="high";
+        var dur=Math.min(secs, vid.duration||secs), nFrames=Math.max(1,Math.floor(dur*fps));
+        var rgbFrames=[];
+        var chain=Promise.resolve();
+        var _loop=function(i){
+          return seekTo(Math.min(vid.duration||0, i/fps)).then(function(){
+            cvx.drawImage(vid,0,0,cols,rows);
+            var img=cvx.getImageData(0,0,cols,rows).data;
+            var buf=new Uint8ClampedArray(cols*rows*3);
+            for(var p=0,q=0;p<img.length;p+=4,q+=3){buf[q]=img[p];buf[q+1]=img[p+1];buf[q+2]=img[p+2];}
+            rgbFrames.push(buf);
+            progbar.style.width=Math.round(((i+1)/nFrames)*55)+"%";
+            setStatus("Sampling frames... "+(i+1)+"/"+nFrames);
+            if(i%3===0) return new Promise(function(r){requestAnimationFrame(r);});
+          });
+        };
+        for(var i=0;i<nFrames;i++){ (function(i){ chain=chain.then(function(){return _loop(i);}); })(i); }
+        return chain.then(function(){
+          var frames=[],colorGrids=null,palette=null;
+          if(withColor){
+            setStatus("Building adaptive palette (median cut, OKLab)...");
+            return new Promise(function(r){requestAnimationFrame(r);}).then(function(){
+              palette=medianCutPalette(rgbFrames,colors);
+              var paletteLab=palette.map(function(c){return rgb2oklab(c[0],c[1],c[2]);});
+              colorGrids=[];
+              var c2=Promise.resolve();
+              var _b=function(i){ return Promise.resolve().then(function(){
+                var L=frameToLayers(rgbFrames[i],cols,rows,RAMP,invert,palette,paletteLab);
+                frames.push(L.glyph); colorGrids.push(L.color);
+                progbar.style.width=Math.round(55+((i+1)/rgbFrames.length)*45)+"%";
+                setStatus("Dithering + matching colors... "+(i+1)+"/"+rgbFrames.length);
+                if(i%2===0) return new Promise(function(r){requestAnimationFrame(r);});
+              }); };
+              for(var i=0;i<rgbFrames.length;i++){ (function(i){ c2=c2.then(function(){return _b(i);}); })(i); }
+              return c2.then(function(){ return finish(frames,colorGrids,palette,cols,rows,fps,true); });
+            });
+          } else {
+            for(var i=0;i<rgbFrames.length;i++) frames.push(frameToGlyphOnly(rgbFrames[i],cols,rows,RAMP,invert));
+            progbar.style.width="100%";
+            return finish(frames,null,null,cols,rows,fps,false);
+          }
+        });
+      })
+      .then(function(){ URL.revokeObjectURL(url); busy=false; })
+      .catch(function(e){ setStatus(e.message||String(e)); prog.classList.remove("on"); busy=false; });
+  }
+
+  function finish(frames,colorGrids,palette,cols,rows,fps,withColor){
+    spec = withColor ? {sl:1,kind:"frames",cols:cols,rows:rows,fps:fps,frames:frames,palette:palette,colors:colorGrids}
+                     : {sl:1,kind:"frames",cols:cols,rows:rows,fps:fps,frames:frames};
+    var json=JSON.stringify(spec);
+    frameHtml=[]; for(var i=0;i<frames.length;i++) frameHtml.push(renderFrameHtml(spec,i));
+    el("pv-fUp").textContent="0 bytes";
+    el("pv-fPal").innerHTML = withColor ? (palette.length+" <small>colors</small>") : "<small>grayscale</small>";
+    el("pv-fFrames").textContent=String(frames.length);
+    el("pv-fSize").innerHTML = (json.length/1024).toFixed(1)+" <small>KB</small>";
+    var hasAnsi=/\x1b/.test(json);
+    el("pv-fAnsi").textContent = hasAnsi ? "FOUND" : "0";
+    el("pv-fAnsi").className = "val " + (hasAnsi?"":"ok");
+    el("pv-rawJson").textContent = json.length>20000 ? json.slice(0,20000)+"\n... ("+(json.length/1024).toFixed(1)+" KB total)" : json;
+    el("pv-rawSummary").textContent = "View the sealed creative bytes ("+(json.length/1024).toFixed(1)+" KB, "+frames.length+" frames, no escape codes)";
+    fitScreen(cols);
+    setStatus("Translated locally: "+cols+"x"+rows+" cells, "+frames.length+" frames @ "+fps+"fps. Nothing was uploaded.");
+    prog.classList.remove("on");
+    playIdx=0; el("pv-play").disabled=false; el("pv-step").disabled=false; startPlay();
+  }
+
+  var drop=el("pv-drop"), fileInput=el("pv-file");
+  fileInput.addEventListener("change",function(e){ var f=e.target.files[0]; if(f) process(f); });
+  ["dragenter","dragover"].forEach(function(ev){ drop.addEventListener(ev,function(e){e.preventDefault();drop.classList.add("hot");}); });
+  ["dragleave","drop"].forEach(function(ev){ drop.addEventListener(ev,function(e){e.preventDefault();drop.classList.remove("hot");}); });
+  drop.addEventListener("drop",function(e){ var f=e.dataTransfer.files[0]; if(f) process(f); });
+  window.addEventListener("resize",function(){ if(spec) fitScreen(spec.cols); });
+})();
 </script>
 
 </body>
