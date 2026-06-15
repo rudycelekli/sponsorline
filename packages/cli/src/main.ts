@@ -12,6 +12,7 @@ import { runFeedback } from "./cmd-feedback.js";
 import { runStatus } from "./cmd-status.js";
 import { runReceipt } from "./cmd-receipt.js";
 import { runPayout } from "./cmd-payout.js";
+import { runWatch } from "./cmd-watch.js";
 import { execSync } from "node:child_process";
 
 function readStdin(): Promise<string> {
@@ -127,8 +128,21 @@ export async function main(argv: string[]): Promise<number> {
       }
       return out.exitCode;
     }
+    case "watch": {
+      // Opt-in viewer: replays the already-served creative as a live animation. Ctrl-C
+      // (SIGINT) aborts the loop cleanly so the cursor is always restored.
+      const controller = new AbortController();
+      const onSigint = () => controller.abort();
+      process.once("SIGINT", onSigint);
+      try {
+        const out = await runWatch({ appDir: dir, signal: controller.signal });
+        return out.exitCode;
+      } finally {
+        process.removeListener("SIGINT", onSigint);
+      }
+    }
     default:
-      process.stdout.write("Usage: sponsorline <init|statusline|status|receipt|why|earnings|verify|feedback|payout|off> [--json]\n");
+      process.stdout.write("Usage: sponsorline <init|statusline|status|watch|receipt|why|earnings|verify|feedback|payout|off> [--json]\n");
       return cmd ? 2 : 0;
   }
 }
