@@ -1,6 +1,6 @@
 {
   "name": "sponsorline",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "bin": {
@@ -37,6 +37,6 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@effinai/sponsorline-core": "0.2.0"
+    "@effinai/sponsorline-core": "0.3.0"
   }
 }

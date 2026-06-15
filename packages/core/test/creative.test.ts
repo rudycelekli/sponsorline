@@ -2,8 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   decodeCreative,
   parseCreative,
+  COLOR_ALPHABET,
   type EffectCreative,
   type FramesCreative,
+  type Rgb,
 } from "../src/creative.js";
 
 // Visible text with all ANSI SGR sequences removed — what the eye actually reads.
@@ -171,5 +173,27 @@ describe("decodeCreative — frames colour layer", () => {
     const out = decodeCreative(colored(), { nowMs: 0, oneLine: true, cols: 2, colorLevel: "truecolor" });
     expect(hasAnsi(out)).toBe(true);
     expect(visible(out)).toBe("##");
+  });
+
+  it("addresses palette indices beyond 64 via the extended alphabet", () => {
+    // The first 64 alphabet entries are base64; index 64 is the first extended char. Build a
+    // palette big enough to need it and point a cell at exactly index 64.
+    const palette: Rgb[] = Array.from({ length: 70 }, (_, i) => [i, 0, 0] as Rgb);
+    palette[64] = [7, 200, 13];
+    const ch64 = COLOR_ALPHABET[64];
+    expect(ch64).toBe("\u0100"); // first extended code point, a single BMP unit
+    const spec: FramesCreative = {
+      sl: 1,
+      kind: "frames",
+      cols: 1,
+      rows: 1,
+      fps: 1,
+      frames: ["#"],
+      palette,
+      colors: [ch64],
+    };
+    const out = decodeCreative(JSON.stringify(spec), { nowMs: 0, colorLevel: "truecolor" });
+    expect(visible(out)).toBe("#");
+    expect(out).toContain("\x1b[38;2;7;200;13m"); // resolved to palette[64], not a base64 index
   });
 });

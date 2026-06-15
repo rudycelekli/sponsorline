@@ -39,7 +39,7 @@ const ESC = "\x1b";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function parseArgs(argv) {
-  const a = { cols: 120, fps: 12, ramp: " .,:;irsXA253hMHGS#9B&@" };
+  const a = { cols: 120, fps: 12, ramp: " .,:;irsXA253hMHGS#9B&@", colors: 256 };
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];
@@ -53,6 +53,7 @@ function parseArgs(argv) {
     else if (t === "--fps") a.fps = Number(argv[++i]);
     else if (t === "--seconds") a.seconds = Number(argv[++i]);
     else if (t === "--ramp") a.ramp = argv[++i];
+    else if (t === "--colors") a.colors = Math.max(2, Math.min(256, Number(argv[++i]) || 256));
     else if (t === "--out") a.out = argv[++i];
     else rest.push(t);
   }
@@ -363,7 +364,7 @@ async function main() {
   let colors;
   if (a.color) {
     const rgb = decodeRgbFrames(a.input, cols, rows, fps, a.seconds);
-    palette = medianCutPalette(rgb, 64);
+    palette = medianCutPalette(rgb, a.colors);
     ({ frames, colors } = gridToColorFrames(rgb, cols, rows, a.ramp, a.invert, palette));
   } else {
     const gray = decodeGrayFrames(a.input, cols, rows, fps, a.seconds);

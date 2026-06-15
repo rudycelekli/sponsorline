@@ -51,10 +51,16 @@ export interface FramesCreative {
   colors?: string[]; // parallel to `frames`; each is an index-grid (see COLOR_ALPHABET)
 }
 
-// The character alphabet a `colors` index-grid uses, one printable char per palette index.
-// 64 entries (base64 order) cover the 64-colour cube the transcoder quantises to; every
-// char is non-control and non-space so an index-grid is as clean as a glyph frame.
-export const COLOR_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+// The character alphabet a `colors` index-grid uses: one char per palette index, so a grid
+// cell aligns 1:1 with its glyph cell. The first 64 entries are the original base64 order, so
+// every colour layer authored before the 256-colour expansion still decodes identically;
+// indices 64..255 extend into a contiguous block of Latin code points (U+0100..U+01BF). Every
+// entry is a single BMP code unit, non-control, and non-space, so an index-grid stays as clean
+// and cell-aligned as a glyph frame and survives sanitize() unchanged. 256 entries is the
+// useful ceiling: ansi256 terminals top out there and truecolor renders each entry exactly.
+const COLOR_ALPHABET_BASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const COLOR_ALPHABET_EXT = Array.from({ length: 192 }, (_, i) => String.fromCharCode(0x100 + i)).join("");
+export const COLOR_ALPHABET = COLOR_ALPHABET_BASE + COLOR_ALPHABET_EXT;
 const COLOR_INDEX: ReadonlyMap<string, number> = new Map([...COLOR_ALPHABET].map((ch, i) => [ch, i]));
 
 // Map a single index character to its palette index, or -1 if it is not in the alphabet.
