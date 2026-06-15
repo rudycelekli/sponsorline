@@ -1,6 +1,7 @@
 {
   "name": "sponsorline",
   "version": "0.1.0",
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "bin": { "sponsorline": "./bin/sponsorline.mjs" },
   "files": ["dist", "bin"],

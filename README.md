@@ -43,3 +43,9 @@ What it does **not** prove on its own is *whose* device produced the log. The pu
 ## Architecture
 
 `@sponsorline/core` (pure substrate) → `sponsorline` CLI (the official statusLine command + init/why/feedback/earnings/verify/off) → `@sponsorline/mcp` (advertiser/enterprise seam). `sponsorline-cursor` is a thin Cursor/VS Code status-bar adapter that invokes the same CLI engine over the identical stdin-JSON/stdout-line contract Claude Code uses — no binary patching, shared on-device state. Local JSONL witness log; Ed25519 seals; deterministic second-price auction. See `docs/adr/ADR-0001-sponsorline-v0.1.md`.
+
+## Licensing
+
+The on-device client you actually audit and run, `@sponsorline/core`, the `sponsorline` CLI, and the `sponsorline-cursor` adapter, is **source-available under the [PolyForm Shield License 1.0.0](LICENSE)**. You may read, run, audit, and verify it for any purpose, including independently checking the privacy guarantees. You may not use it to ship a competing ad network.
+
+The advertiser/marketer/billing/payout backend (`@sponsorline/mcp`) is proprietary and is being extracted into a separate private repository. A reviewer never needs it: the only code that runs on a developer's machine and touches developer context is the public client. See [`docs/LICENSING.md`](docs/LICENSING.md) for the boundary and rationale.

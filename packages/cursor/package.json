@@ -3,6 +3,7 @@
   "displayName": "Sponsorline for Cursor",
   "description": "Consent-first sponsor line in the Cursor status bar. Reuses the local sponsorline engine — never sees your code.",
   "version": "0.2.0",
+  "license": "SEE LICENSE IN LICENSE",
   "publisher": "sponsorline",
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Other"],
