@@ -5,7 +5,7 @@
   "workspaces": ["packages/*"],
   "engines": { "node": ">=18" },
   "scripts": {
-    "build": "npm run build -w @sponsorline/core && npm run build -w sponsorline && npm run build -w @sponsorline/mcp && npm run build -w sponsorline-cursor",
+    "build": "npm run build -w @sponsorline/core && npm run build -w sponsorline && npm run build -w sponsorline-cursor",
     "test": "vitest run",
     "bench": "node bench/run.mjs"
   },
