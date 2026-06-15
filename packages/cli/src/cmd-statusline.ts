@@ -6,6 +6,7 @@ import {
   deriveDeviceKey,
   validateConsent,
   makeImpression,
+  decodeCreative,
   Ledger,
   SolverBandit,
   type Bidder,
@@ -23,6 +24,11 @@ export interface StatuslineInput {
   now: number;
   seed: bigint;
   rotateMs?: number;
+  // Render hints for the animated creative. Defaulted from the environment when the
+  // caller omits them so the decoder stays pure and the command stays testable.
+  cols?: number; // terminal width budget
+  color?: boolean; // false => no ANSI (honors NO_COLOR)
+  reducedMotion?: boolean; // true => a single static frame (honors SPONSORLINE_REDUCED_MOTION)
 }
 export interface StatuslineOutput { line: string; exitCode: number; }
 
@@ -36,6 +42,18 @@ function sponsorLine(model: string, creative: string): string {
 
 export async function runStatusline(input: StatuslineInput): Promise<StatuslineOutput> {
   let modelName = "Claude";
+  // Display-time decode of the (possibly animated) creative. The sealed creative
+  // string in the witness/ledger is never touched; this only shapes the bytes shown
+  // on THIS redraw, keyed off the wall-clock the host passes each frame. Defaults are
+  // read from the environment so reduced-motion and NO_COLOR are honored out of the box.
+  const show = (creative: string): string =>
+    decodeCreative(creative, {
+      nowMs: input.now,
+      oneLine: true,
+      cols: input.cols ?? (process.stdout.columns || undefined),
+      color: input.color ?? !process.env.NO_COLOR,
+      reducedMotion: input.reducedMotion ?? Boolean(process.env.SPONSORLINE_REDUCED_MOTION),
+    });
   try {
     const ctx = JSON.parse(input.stdin) as { workspace?: { current_dir?: string }; model?: { display_name?: string } };
     modelName = ctx.model?.display_name ?? "Claude";
@@ -56,7 +74,7 @@ export async function runStatusline(input: StatuslineInput): Promise<StatuslineO
     const rotateMs = input.rotateMs ?? DEFAULT_ROTATE_MS;
     const render = store.readRenderState();
     if (render && input.now - render.lastImpressionAt < rotateMs) {
-      return { line: sponsorLine(modelName, render.lastCreative), exitCode: 0 };
+      return { line: sponsorLine(modelName, show(render.lastCreative)), exitCode: 0 };
     }
 
     // A new billable impression mutates the witness hash chain AND the ledger.
@@ -65,7 +83,7 @@ export async function runStatusline(input: StatuslineInput): Promise<StatuslineO
     // break verify for an honest user) or double-bill. A caller that cannot acquire
     // degrades gracefully — show the cached/plain line, log nothing.
     if (!store.tryLock()) {
-      return { line: render ? sponsorLine(modelName, render.lastCreative) : plainLine(modelName), exitCode: 0 };
+      return { line: render ? sponsorLine(modelName, show(render.lastCreative)) : plainLine(modelName), exitCode: 0 };
     }
     try {
       // Re-check rotation after acquiring: another process may have just logged the
@@ -73,7 +91,7 @@ export async function runStatusline(input: StatuslineInput): Promise<StatuslineO
       // nothing — this is what makes the impression exactly-once under concurrency.
       const fresh = store.readRenderState();
       if (fresh && input.now - fresh.lastImpressionAt < rotateMs) {
-        return { line: sponsorLine(modelName, fresh.lastCreative), exitCode: 0 };
+        return { line: sponsorLine(modelName, show(fresh.lastCreative)), exitCode: 0 };
       }
 
       const present = new Set(readdirSync(cwd));
@@ -133,7 +151,7 @@ export async function runStatusline(input: StatuslineInput): Promise<StatuslineO
         lastBucket: bucket,
       });
 
-      return { line: sponsorLine(modelName, result.winningCreative!), exitCode: 0 };
+      return { line: sponsorLine(modelName, show(result.winningCreative!)), exitCode: 0 };
     } finally {
       store.unlock();
     }

@@ -15,3 +15,4 @@ export * from "./ledger.js";
 export * from "./settlement.js";
 export * from "./relevance.js";
 export * from "./consent.js";
+export * from "./creative.js";

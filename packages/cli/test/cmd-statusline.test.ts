@@ -119,4 +119,43 @@ describe("statusline", () => {
     expect(out.line).toContain("Opus");
     expect(out.line).toContain("Try Acme CI");
   });
+
+  const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
+
+  it("animates a pulsing creative on the re-render path without billing again", async () => {
+    const animApp = mkdtempSync(join(tmpdir(), "sl-anim-"));
+    const key = deriveDeviceKey(SALT);
+    const store = new Store(animApp);
+    store.writeConsent(createConsent({ grantedSignals: ["lang"], key, now: 0, ttlMs: 1e12 }));
+    const creative = JSON.stringify({ sl: 1, kind: "effect", text: "Acme CI", effect: "pulse" });
+    store.writeInventory([{ id: "a", bidCents: 500, targetSignals: ["lang:ts"], creative }]);
+    const rotateMs = 1000;
+
+    const first = await runStatusline({ appDir: animApp, salt: SALT, stdin: ctx(projectdir), now: 0, seed: 42n, rotateMs, color: true });
+    const mid = await runStatusline({ appDir: animApp, salt: SALT, stdin: ctx(projectdir), now: 250, seed: 99n, rotateMs, color: true });
+
+    // Billed exactly once: the second redraw rode the cached re-render path.
+    expect(new Store(animApp).readWitness()).toHaveLength(1);
+    // The bytes differ frame-to-frame (it animates) but the words stay the same.
+    expect(mid.line).not.toBe(first.line);
+    expect(strip(first.line)).toContain("Acme CI");
+    expect(strip(mid.line)).toBe(strip(first.line));
+  });
+
+  it("honors reduced motion and NO_COLOR (static, no ANSI)", async () => {
+    const animApp = mkdtempSync(join(tmpdir(), "sl-static-"));
+    const key = deriveDeviceKey(SALT);
+    const store = new Store(animApp);
+    store.writeConsent(createConsent({ grantedSignals: ["lang"], key, now: 0, ttlMs: 1e12 }));
+    const creative = JSON.stringify({ sl: 1, kind: "effect", text: "Acme CI", effect: "shimmer" });
+    store.writeInventory([{ id: "a", bidCents: 500, targetSignals: ["lang:ts"], creative }]);
+    const rotateMs = 1000;
+    const opts = { appDir: animApp, salt: SALT, stdin: ctx(projectdir), seed: 42n, rotateMs, color: false, reducedMotion: true };
+
+    const a = await runStatusline({ ...opts, now: 0 });
+    const b = await runStatusline({ ...opts, now: 250 });
+    expect(a.line).not.toMatch(/\x1b\[/); // no ANSI emitted
+    expect(b.line).toBe(a.line); // frozen across time
+    expect(a.line).toContain("Acme CI");
+  });
 });
