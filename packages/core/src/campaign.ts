@@ -1,5 +1,5 @@
 import { validatePredicate, type TargetPredicate } from "./targeting.js";
-import { parseCreative, type AnimatedCreative, type CreativeEffect, type Rgb } from "./creative.js";
+import { parseCreative, colorIndexOf, type AnimatedCreative, type FramesCreative, type CreativeEffect, type Rgb } from "./creative.js";
 import type { Bidder } from "./auction.js";
 
 // A marketer-facing campaign: richer than the raw auction Bidder. It carries the
@@ -31,6 +31,7 @@ export interface CampaignPolicy {
   maxFrameChars?: number; // cap on the chars of a single frame (default 1024)
   maxFps?: number; // upper fps bound for a frames creative (default 30)
   maxGrid?: number; // upper bound on cols/rows for a frames creative (default 200)
+  maxPalette?: number; // cap on the optional colour palette size (default 256)
   allowFrames?: boolean; // frames are opt-in inventory; default false (effect creatives always allowed)
 }
 
@@ -57,28 +58,51 @@ function isRgb(v: unknown): v is Rgb {
   return Array.isArray(v) && v.length === 3 && v.every((n) => Number.isInteger(n) && n >= 0 && n <= 255);
 }
 
-// Approximate a frame's relative luminance as the share of non-space cells: an all-filled
-// grid reads as "bright", an all-space grid as "dark". Newlines (row separators) are not
-// cells and are ignored. This is a proxy, not photometry, but it catches the strobe shape
-// a flash attack needs: alternating dark and bright grids.
-function frameLuminance(frame: string): number {
+// Rec. 709 relative luminance of an RGB triple, normalised to 0..1.
+function rgbLuminance(rgb: Rgb): number {
+  return (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
+}
+
+// Approximate a frame's relative luminance. Without a colour layer this is the share of
+// non-space cells (all-filled reads bright, all-space reads dark). WITH a colour layer we
+// average the perceived luminance of lit cells using the palette, so a colour/brightness
+// strobe (identical glyphs flipping between dark-red and bright-white) is caught too: such a
+// strobe is invisible to a glyph-occupancy-only metric. Newlines separate rows and are not
+// cells. A proxy, not photometry, but it catches the strobe shape a flash attack needs.
+function frameLuminance(glyph: string, colorFrame: string | null, palette: Rgb[] | null): number {
+  const grows = glyph.split("\n");
+  const crows = colorFrame !== null ? colorFrame.split("\n") : null;
   let total = 0;
-  let lit = 0;
-  for (const ch of frame) {
-    if (ch === "\n") continue;
-    total += 1;
-    if (ch !== " ") lit += 1;
+  let sum = 0;
+  for (let y = 0; y < grows.length; y++) {
+    const g = [...grows[y]];
+    const c = crows ? [...(crows[y] ?? "")] : null;
+    for (let x = 0; x < g.length; x++) {
+      total += 1;
+      if (g[x] === " ") continue;
+      if (c && palette) {
+        const ci = colorIndexOf(c[x] ?? "");
+        const rgb = ci >= 0 && ci < palette.length ? palette[ci] : ([255, 255, 255] as Rgb);
+        sum += rgbLuminance(rgb);
+      } else {
+        sum += 1; // monochrome lit cell counts as full luminance
+      }
+    }
   }
-  return total === 0 ? 0 : lit / total;
+  return total === 0 ? 0 : sum / total;
 }
 
 // Estimate how many times a looping frames creative flashes bright per second. A flash
 // needs a rising luminance edge, so we count edges where luminance jumps by more than the
 // delta threshold, including the wraparound from the last frame back to the first (the loop
-// repeats forever), then scale by how many times the whole loop plays each second.
-function flashesPerSecond(frames: string[], fps: number): number {
+// repeats forever), then scale by how many times the whole loop plays each second. When a
+// colour layer is present the per-frame luminance accounts for it (see frameLuminance).
+function flashesPerSecond(spec: FramesCreative): number {
+  const { frames, fps } = spec;
   if (frames.length < 2 || !(fps > 0)) return 0;
-  const lum = frames.map(frameLuminance);
+  const palette = Array.isArray(spec.palette) ? spec.palette : null;
+  const colors = palette && Array.isArray(spec.colors) ? spec.colors : null;
+  const lum = frames.map((f, i) => frameLuminance(f, colors ? colors[i] ?? "" : null, palette));
   let risingEdges = 0;
   for (let i = 0; i < lum.length; i++) {
     const next = lum[(i + 1) % lum.length];
@@ -166,10 +190,57 @@ function validateAnimated(spec: AnimatedCreative, creative: string, policy: Camp
     }
   }
 
+  // Optional colour layer. The glyph frames above remain the sealed, auditable, grayscale-
+  // degradable surface; colour rides alongside as a fixed palette plus one index-grid per
+  // frame, and the decoder generates ANSI locally. Validate it here so a colour layer can
+  // never smuggle control chars, mismatched geometry, or out-of-range indices into sealed
+  // inventory. Either both palette and colors are present, or neither.
+  const hasPalette = spec.palette !== undefined;
+  const hasColors = spec.colors !== undefined;
+  if (hasPalette || hasColors) {
+    const maxPalette = policy.maxPalette ?? 256;
+    let paletteLen = 0;
+    if (!Array.isArray(spec.palette) || spec.palette.length === 0) {
+      errors.push("colour layer requires a non-empty palette array");
+    } else {
+      paletteLen = spec.palette.length;
+      if (spec.palette.length > maxPalette) errors.push(`palette exceeds the ${maxPalette}-colour cap`);
+      if (!spec.palette.every(isRgb)) errors.push("palette entries must be [r,g,b] triples of integers 0-255");
+    }
+    if (!Array.isArray(spec.colors) || spec.colors.length !== spec.frames.length) {
+      errors.push("colors must be an array parallel to frames (one index-grid per frame)");
+    } else {
+      for (let i = 0; i < spec.colors.length; i++) {
+        const cf = spec.colors[i];
+        if (typeof cf !== "string") {
+          errors.push(`colors[${i}] must be a string`);
+          continue;
+        }
+        if (CONTROL_CHARS_KEEP_NL.test(cf)) errors.push(`colors[${i}] contains control characters`);
+        const crows = cf.split("\n");
+        if (Number.isInteger(spec.rows) && crows.length > spec.rows) errors.push(`colors[${i}] has more than ${spec.rows} rows`);
+        if (Number.isInteger(spec.cols) && crows.some((r) => [...r].length > spec.cols)) {
+          errors.push(`colors[${i}] has a row wider than ${spec.cols} cols`);
+        }
+        if (paletteLen > 0) {
+          for (const ch of cf) {
+            if (ch === "\n") continue;
+            const ci = colorIndexOf(ch);
+            if (ci < 0 || ci >= paletteLen) {
+              errors.push(`colors[${i}] references a palette index outside 0..${paletteLen - 1}`);
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
   // WCAG 2.3.1 flash-safety: a frames creative that alternates dark and bright grids is a
   // strobe. Estimate its flash rate at the declared fps and reject anything over the limit
-  // so an epileptogenic creative can never be sealed into inventory.
-  const flashes = flashesPerSecond(spec.frames, spec.fps);
+  // so an epileptogenic creative can never be sealed into inventory. With a colour layer the
+  // estimate uses palette luminance, so a colour-only strobe is caught as well.
+  const flashes = flashesPerSecond(spec);
   if (flashes > MAX_FLASHES_PER_SEC) {
     errors.push(
       `frames flash ${flashes.toFixed(1)} times/sec, over the ${MAX_FLASHES_PER_SEC}/sec flash-safety limit (WCAG 2.3.1)`,

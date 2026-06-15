@@ -183,6 +183,84 @@ describe("validateCampaign — animated creatives", () => {
   });
 });
 
+describe("validateCampaign — frames colour layer", () => {
+  const FRAMES_POLICY = { ...POLICY, allowFrames: true };
+  // A 2x1 colour frames creative: palette of two colours, index grids parallel to frames.
+  const colored = (over: Record<string, unknown> = {}): string =>
+    JSON.stringify({
+      sl: 1,
+      kind: "frames",
+      cols: 2,
+      rows: 1,
+      fps: 4,
+      frames: ["##", "##"],
+      palette: [
+        [255, 0, 0],
+        [0, 255, 0],
+      ],
+      colors: ["AB", "BA"],
+      ...over,
+    });
+
+  it("accepts a well-formed colour layer", () => {
+    const v = validateCampaign({ ...base, creative: colored() }, FRAMES_POLICY);
+    expect(v.ok).toBe(true);
+    expect(v.errors).toEqual([]);
+  });
+
+  it("rejects a palette entry that is not an rgb triple", () => {
+    const v = validateCampaign({ ...base, creative: colored({ palette: [[255, 0, 0], [0, 300, 0]] }) }, FRAMES_POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/palette entries must be/i);
+  });
+
+  it("rejects colors whose length does not match frames", () => {
+    const v = validateCampaign({ ...base, creative: colored({ colors: ["AB"] }) }, FRAMES_POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/parallel to frames/i);
+  });
+
+  it("rejects an index that points outside the palette", () => {
+    // "C" is alphabet index 2, but the palette has only 2 entries (0,1).
+    const v = validateCampaign({ ...base, creative: colored({ colors: ["AC", "BA"] }) }, FRAMES_POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/index outside/i);
+  });
+
+  it("rejects a palette over the configured cap", () => {
+    const big = Array.from({ length: 5 }, () => [1, 1, 1]);
+    const v = validateCampaign({ ...base, creative: colored({ palette: big }) }, { ...FRAMES_POLICY, maxPalette: 4 });
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/palette exceeds/i);
+  });
+
+  it("catches a colour-only strobe that glyph occupancy alone would miss (WCAG 2.3.1)", () => {
+    // Identical glyphs every frame (same occupancy), but the colour flips between black and
+    // white at 30fps — invisible to a glyph-occupancy metric, caught by palette luminance.
+    const v = validateCampaign(
+      {
+        ...base,
+        creative: JSON.stringify({
+          sl: 1,
+          kind: "frames",
+          cols: 2,
+          rows: 1,
+          fps: 30,
+          frames: ["##", "##"],
+          palette: [
+            [0, 0, 0],
+            [255, 255, 255],
+          ],
+          colors: ["AA", "BB"],
+        }),
+      },
+      FRAMES_POLICY,
+    );
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/flash/i);
+  });
+});
+
 describe("campaignToBidder", () => {
   it("maps a campaign into the auction Bidder shape", () => {
     const b = campaignToBidder(base);

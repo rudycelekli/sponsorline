@@ -41,6 +41,26 @@ export interface FramesCreative {
   rows: number;
   fps: number;
   frames: string[]; // each frame is `rows` lines joined by "\n"
+  // OPTIONAL colour layer. The glyph `frames` above stay the sealed, auditable, plain-text
+  // surface that degrades to grayscale on NO_COLOR / a pipe. Colour rides alongside as a
+  // small fixed palette plus, per frame, a grid of palette-index characters (same geometry
+  // as the glyph frame). The decoder pairs glyph cell (y,x) with index cell (y,x) and emits
+  // ANSI LOCALLY at display time. No escape ever enters the sealed creative, so the
+  // zero-egress / no-terminal-hijack boundary holds exactly as for the monochrome path.
+  palette?: Rgb[]; // colour table; index chars in `colors` address into this
+  colors?: string[]; // parallel to `frames`; each is an index-grid (see COLOR_ALPHABET)
+}
+
+// The character alphabet a `colors` index-grid uses, one printable char per palette index.
+// 64 entries (base64 order) cover the 64-colour cube the transcoder quantises to; every
+// char is non-control and non-space so an index-grid is as clean as a glyph frame.
+export const COLOR_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const COLOR_INDEX: ReadonlyMap<string, number> = new Map([...COLOR_ALPHABET].map((ch, i) => [ch, i]));
+
+// Map a single index character to its palette index, or -1 if it is not in the alphabet.
+export function colorIndexOf(ch: string): number {
+  const i = COLOR_INDEX.get(ch);
+  return i === undefined ? -1 : i;
 }
 
 export type AnimatedCreative = EffectCreative | FramesCreative;
@@ -195,18 +215,56 @@ function decodeEffect(spec: EffectCreative, opts: DecodeOptions): string {
   }
 }
 
+// Colourise one grid row: pair each glyph cell with its palette colour and emit ANSI
+// locally. Run-length: a colour escape is emitted only when it changes, spaces carry no
+// colour (the cell is blank), and a single RESET closes the row so colour never bleeds
+// into the next line. At level "none", fg() returns "" so this yields plain text.
+function colorizeRow(glyphRow: string, colorRow: string, palette: Rgb[], level: ColorLevel): string {
+  const glyphs = [...glyphRow];
+  const idxs = [...colorRow];
+  let out = "";
+  let active = ""; // the escape currently in effect on the terminal
+  for (let x = 0; x < glyphs.length; x++) {
+    const ch = glyphs[x];
+    let esc = "";
+    if (ch !== " ") {
+      const ci = colorIndexOf(idxs[x] ?? "");
+      const rgb = ci >= 0 && ci < palette.length ? palette[ci] : DEFAULT_FG;
+      esc = fg(rgb, level);
+    }
+    if (esc !== "" && esc !== active) {
+      out += esc;
+      active = esc;
+    }
+    out += ch;
+  }
+  return active === "" ? out : out + RESET;
+}
+
 // Render the frames creative's current frame. The status-line caller passes oneLine to
-// collapse the grid to its first row; the Phase-2 grid player omits it.
+// collapse the grid to its first row; the Phase-2 grid player omits it. When the creative
+// carries a colour layer and the terminal can render colour, glyphs are colourised locally;
+// otherwise the plain grayscale glyphs serve unchanged (the always-safe fallback).
 function decodeFrames(spec: FramesCreative, opts: DecodeOptions): string {
   const idx = opts.reducedMotion
     ? 0
     : Math.floor(opts.nowMs / (1000 / spec.fps)) % spec.frames.length;
   const frame = spec.frames[idx] ?? "";
+  const level = resolveLevel(opts);
+  const palette = Array.isArray(spec.palette) ? spec.palette : null;
+  const colorFrame = palette && Array.isArray(spec.colors) ? spec.colors[idx] ?? "" : null;
+  const canColor = level !== "none" && palette !== null && colorFrame !== null;
+
   if (opts.oneLine) {
-    const firstRow = sanitize(frame.split("\n")[0] ?? "", false);
-    return truncate(firstRow, opts.cols);
+    const glyphRow = truncate(sanitize(frame.split("\n")[0] ?? "", false), opts.cols);
+    if (!canColor) return glyphRow;
+    const colorRow = sanitize(colorFrame.split("\n")[0] ?? "", false);
+    return colorizeRow(glyphRow, colorRow, palette, level);
   }
-  return sanitize(frame, true);
+  if (!canColor) return sanitize(frame, true);
+  const glyphRows = sanitize(frame, true).split("\n");
+  const colorRows = sanitize(colorFrame, true).split("\n");
+  return glyphRows.map((g, y) => colorizeRow(g, colorRows[y] ?? "", palette, level)).join("\n");
 }
 
 // The one entry point. Plain creatives pass through (sanitised, and truncated when a

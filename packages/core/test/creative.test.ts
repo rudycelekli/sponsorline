@@ -125,3 +125,51 @@ describe("decodeCreative — frames kind", () => {
     expect(decodeCreative(JSON.stringify(grid), { nowMs: 0 })).toBe("AA\nBB");
   });
 });
+
+describe("decodeCreative — frames colour layer", () => {
+  // A 2x1 grid with a colour layer: index "A" -> palette[0] red, index "B" -> palette[1] green.
+  const colored = (): string => {
+    const spec: FramesCreative = {
+      sl: 1,
+      kind: "frames",
+      cols: 2,
+      rows: 1,
+      fps: 2,
+      frames: ["##", "##"],
+      palette: [
+        [255, 0, 0],
+        [0, 255, 0],
+      ],
+      colors: ["AB", "BA"],
+    };
+    return JSON.stringify(spec);
+  };
+
+  it("emits ANSI from the palette when colour is on, and the visible glyphs are unchanged", () => {
+    const out = decodeCreative(colored(), { nowMs: 0, colorLevel: "truecolor" });
+    expect(hasAnsi(out)).toBe(true);
+    expect(visible(out)).toBe("##");
+    // frame 0 colours: cell0=red, cell1=green
+    expect(out).toContain("\x1b[38;2;255;0;0m");
+    expect(out).toContain("\x1b[38;2;0;255;0m");
+  });
+
+  it("emits NO ANSI at colour level none, just the grayscale glyphs", () => {
+    const out = decodeCreative(colored(), { nowMs: 0, colorLevel: "none" });
+    expect(hasAnsi(out)).toBe(false);
+    expect(out).toBe("##");
+  });
+
+  it("downsamples to 256-colour escapes at the ansi256 level (never truecolor)", () => {
+    const out = decodeCreative(colored(), { nowMs: 0, colorLevel: "ansi256" });
+    expect(out).toContain("\x1b[38;5;");
+    expect(out).not.toContain("\x1b[38;2;");
+    expect(visible(out)).toBe("##");
+  });
+
+  it("colourises the collapsed first row under oneLine without changing the visible text", () => {
+    const out = decodeCreative(colored(), { nowMs: 0, oneLine: true, cols: 2, colorLevel: "truecolor" });
+    expect(hasAnsi(out)).toBe(true);
+    expect(visible(out)).toBe("##");
+  });
+});
