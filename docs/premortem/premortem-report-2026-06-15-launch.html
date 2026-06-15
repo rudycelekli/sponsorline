@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sponsorline Launch Premortem — 2026-06-15</title>
+<style>
+  :root{
+    --bg: #0a0e1a;
+    --panel: #11172a;
+    --panel-2: #161d33;
+    --ink: #e8ecf6;
+    --muted: #9aa6c4;
+    --line: #232c47;
+    --red: #ff5d6c;
+    --amber: #ffb454;
+    --green: #57d9a3;
+    --c1:#7aa2ff; --c2:#ff8fab; --c3:#ffd166; --c4:#9d8cff; --c5:#5ce1e6; --c6:#a3e635; --c7:#ff9e64;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:48px 20px 80px}
+  .wrap{max-width:1040px;margin:0 auto}
+  header.top{margin-bottom:8px}
+  .eyebrow{letter-spacing:.18em;text-transform:uppercase;font-size:12px;color:var(--muted)}
+  h1{font-size:clamp(1.7rem,4vw,2.6rem);margin:6px 0 6px;font-weight:800;letter-spacing:-.01em}
+  .frame{color:var(--muted);font-size:15px;max-width:70ch}
+  .frame b{color:var(--ink)}
+  .meta{margin-top:18px;color:var(--muted);font-size:13px}
+  .grid-scope{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 36px}
+  .pill{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12.5px;color:var(--muted)}
+  .pill b{color:var(--ink)}
+  section.synth{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--line);
+    border-radius:18px;padding:26px 26px 10px;margin-bottom:40px}
+  .synth h2{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 18px}
+  .synthrow{display:grid;grid-template-columns:200px 1fr;gap:18px;padding:16px 0;border-top:1px solid var(--line)}
+  .synthrow:first-of-type{border-top:none}
+  .synthrow .k{font-weight:700}
+  .synthrow .k .tag{display:inline-block;margin-top:8px;font-size:11px;font-weight:700;letter-spacing:.06em;
+    padding:3px 8px;border-radius:6px}
+  .tag.most{background:rgba(255,180,84,.16);color:var(--amber);border:1px solid rgba(255,180,84,.35)}
+  .tag.danger{background:rgba(255,93,108,.16);color:var(--red);border:1px solid rgba(255,93,108,.35)}
+  .tag.hidden{background:rgba(157,140,255,.16);color:var(--c4);border:1px solid rgba(157,140,255,.35)}
+  .synthrow .v{color:#cfd6ea}
+  .synthrow .v b{color:#fff}
+  ol.rev,ul.check{margin:6px 0 0;padding-left:20px;color:#cfd6ea}
+  ol.rev li,ul.check li{margin:8px 0}
+  ul.check{list-style:none;padding-left:0}
+  ul.check li::before{content:"☐";color:var(--green);margin-right:10px}
+  h2.section{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+  .scopeline{color:var(--muted);font-size:13px;margin:0 0 22px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent)}
+  .card .n{font-size:12px;color:var(--muted);letter-spacing:.05em}
+  .card h3{margin:6px 0 12px;font-size:1.08rem;line-height:1.3}
+  .card .sev{position:absolute;top:18px;right:18px;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+    padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--muted)}
+  .card p{font-size:14px;color:#c3cbe2;margin:0 0 12px}
+  .card .lab{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 4px}
+  .card .assume{font-style:italic;color:#dfe5f5}
+  .card ul{margin:4px 0 0;padding-left:18px;font-size:13px;color:#b9c2dd}
+  footer{margin-top:48px;color:var(--muted);font-size:12.5px;text-align:center}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 18px;font-size:12px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Premortem &middot; prospective hindsight</div>
+    <h1>The Sponsorline public launch has failed</h1>
+    <p class="frame">It is <b>December 2026</b>. The launch is done and it did not work. Seven investigators each took one way it could have died and wrote the case study. Below is the synthesis, then every failure mode in full.</p>
+    <div class="grid-scope">
+      <span class="pill"><b>What:</b> public launch of a consent-first, zero-egress AI-dev sponsor line</span>
+      <span class="pill"><b>Who:</b> developers (supply), enterprises, marketers (demand)</span>
+      <span class="pill"><b>Win:</b> verify claim survives scrutiny &middot; devs opt in &middot; no trust/legal blowup</span>
+      <span class="pill"><b>Investigators:</b> 7 (parallel)</span>
+    </div>
+  </header>
+
+  <section class="synth">
+    <h2>Synthesis &mdash; read this first</h2>
+
+    <div class="synthrow">
+      <div class="k">Most likely failure<div class="tag most">HIGH PROBABILITY</div></div>
+      <div class="v"><b>Two-sided cold start: "verify once, then off."</b> Developers run <code>npx sponsorline verify</code>, say "neat," and turn it off within a week because earnings are structurally <b>$0</b> until a single segment crosses the ~200-device k-anon floor. Density never forms, no segment is sellable, no advertiser, no revenue, no reason to keep it on. The privacy floor that protects users also makes the cold start nearly impossible. This needs no villain, just ordinary behavior, which is why it is the most probable.</div>
+    </div>
+
+    <div class="synthrow">
+      <div class="k">Most dangerous failure<div class="tag danger">CONFIRMED LIVE RISK</div></div>
+      <div class="v"><b>A trust failure on a trust-only product.</b> The exposed npm token <code>npm_VHb7…uEPow</code> is <b>still live, in plaintext</b>, in <code>~/Downloads/claudeAds/Untitled</code> (verified during this premortem; untracked by git but on disk). If it is published-with by accident or reused before revocation, an attacker ships a malicious <code>sponsorline</code> version to the exact security-conscious audience the product courts. For a "don't trust us, verify" brand this is permanent, not a bad week. Insure against it before anything else ships.</div>
+    </div>
+
+    <div class="synthrow">
+      <div class="k">The hidden assumption<div class="tag hidden">THE REAL LESSON</div></div>
+      <div class="v">Across every failure, the project quietly substitutes <b>"we built / we asserted X"</b> for <b>"X is independently verified or permitted."</b> Documented extension point = <i>permitted</i> ad surface (it isn't, no platform sign-off on file). A signed, consistent ledger = <i>proof of zero egress</i> (it isn't, it proves the diary, not the wire). "I'll revoke the token" = <i>it is revoked</i> (it isn't). "Earn 50%" = <i>devs can be paid</i> (they can't, no live rail). Ironic for a product whose whole pitch is <b>don't trust, verify</b>. Apply that pitch to yourself.</div>
+    </div>
+
+    <div class="synthrow">
+      <div class="k">The revised plan</div>
+      <div class="v">
+        <ol class="rev">
+          <li><b>Verify the token is dead, don't assert it.</b> Revoke at npmjs.com, confirm with <code>npm token list</code>, delete <code>Untitled</code>, enable npm 2FA + provenance, publish from a clean env. (→ most dangerous)</li>
+          <li><b>Get platform permission in writing, or disclose the risk.</b> Confirm Anthropic + Cursor allow third-party sponsor content via status line, or reframe as "your status line, you choose to monetize it" and state the platform risk openly. Do not stake the launch on an unsanctioned surface. (→ host-tool risk)</li>
+          <li><b>Stop claiming <code>verify</code> proves zero-egress.</b> It proves consent + auction-history integrity. Back the egress claim with the auditable open-source client, a reproducible build, and an open invitation to <code>tcpdump</code>/strace it. Kill "verify both claims in one command." (→ verify gap, cheapest highest-leverage fix)</li>
+          <li><b>Reframe the headline to defuse "ads in my editor."</b> Lead with reclaiming dead status-line space on the developer's terms with provable cleanliness, not "I turned on an ad network." Pre-seed 3-5 trusted devs who engage on mechanism. (→ backlash)</li>
+          <li><b>Don't promise money you can't pay yet.</b> Reword "Developers earn 50%" to a conditional, forward-looking line until the live Stripe rail + KYC + thresholds exist. Show a transparent live "devices per segment" counter; earnings arrive after density. (→ cold start + payout reality)</li>
+          <li><b>Protect the one-person launch window.</b> Freeze and smoke-test the npm funnel from a clean machine hours before announce, not at announce. Pre-write the top-5 objection replies. No concierge sales in the first 48h. (→ bandwidth)</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="synthrow">
+      <div class="k">Pre-launch checklist</div>
+      <div class="v">
+        <ul class="check">
+          <li><code>npm token list</code> shows the exposed token gone &middot; <code>Untitled</code> deleted &middot; 2FA on &middot; publishing from clean env</li>
+          <li>Written platform answer (or public risk disclosure) on status-line sponsor content for <b>both</b> Claude Code and Cursor</li>
+          <li>Launch copy no longer says <code>verify</code> proves zero-egress; egress backed by auditable client + reproducible build + audit invitation</li>
+          <li>"Earn 50%" reworded to conditional; no unpayable balances accrue</li>
+          <li>npm funnel smoke-tested from a fresh machine ≥3h before announce; top-5 HN objection replies pre-written</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <h2 class="section">The seven failure modes</h2>
+  <p class="scopeline">One investigator per mode, run in parallel. Each returned a failure story, the underlying assumption, and early warning signs.</p>
+
+  <div class="cards">
+
+    <div class="card" style="--accent:var(--c1)">
+      <div class="n">Failure 01</div>
+      <div class="sev">STRUCTURAL</div>
+      <h3>Host-tool platform risk</h3>
+      <p>Status line is host-governed chrome (Claude Code's <code>statusLine</code> command, Cursor's <code>createStatusBarItem</code>), built for the developer's own context, not third-party ads. A single upstream changelog line (sandbox output, rate-limit redraws, "no commercial content") silently zeroes the inventory. Enterprises' first call is to the vendor, who confirms it's unsanctioned, so the clean-egress proof never gets read.</p>
+      <div class="lab">Underlying assumption</div>
+      <div class="assume">A documented, unpatched extension point is also a contractually and durably permitted one for third-party monetization.</div>
+      <div class="lab">Early warning signs</div>
+      <ul>
+        <li>No written platform authorization on file, only extension-point mechanics.</li>
+        <li>Redraw cadence, line length, escape handling are all host-decided; motion already ships off-by-default.</li>
+      </ul>
+    </div>
+
+    <div class="card" style="--accent:var(--c2)">
+      <div class="n">Failure 02</div>
+      <div class="sev">NARRATIVE-FATAL</div>
+      <h3>verify proves the wrong thing</h3>
+      <p><code>cmd-verify.ts</code> reads only the local, client-authored ledger: it checks consent signatures and replays the witness log. That proves internal consistency, not what the process put on the wire. The security crowd's verdict: "you're verifying your own diary." The private backend can't be audited at all. The one-command demo meant to win HN becomes the artifact used to discredit it.</p>
+      <div class="lab">Underlying assumption</div>
+      <div class="assume">Cryptographic consistency of a signed ledger is interchangeable with a guarantee about what the client actually transmitted.</div>
+      <div class="lab">Early warning signs</div>
+      <ul>
+        <li>SECURITY.md attributes zero-egress to a source-property while selling <code>verify</code> as the proof.</li>
+        <li><code>verify</code> has no network capture or egress-path analysis anywhere in its path.</li>
+      </ul>
+    </div>
+
+    <div class="card" style="--accent:var(--c3)">
+      <div class="n">Failure 03</div>
+      <div class="sev">MOST LIKELY</div>
+      <h3>Two-sided cold start</h3>
+      <p>Verify is a one-time party trick; the status line is a daily tax. Installs smear thinly across <code>lang:* / framework:*</code> cells; no single cell holds 200 simultaneously-active devices, churn empties the ones that fill. Earnings are $0 by construction, so the only rational reason to keep it on is unavailable until density exists, and density needs people to keep it on. The flywheel never turns.</p>
+      <div class="lab">Underlying assumption</div>
+      <div class="assume">Developers will keep an in-editor ad on for the promise of earnings that the k-anon floor guarantees are exactly $0 until a density no organic launch reaches.</div>
+      <div class="lab">Early warning signs</div>
+      <ul>
+        <li>High week-1 init/verify, day-7 retention in low single digits.</li>
+        <li>Max active devices per segment plateaus far below 200 even as installs climb.</li>
+      </ul>
+    </div>
+
+    <div class="card" style="--accent:var(--c4)">
+      <div class="n">Failure 04</div>
+      <div class="sev">REPUTATIONAL</div>
+      <h3>"Ads in my editor" backlash</h3>
+      <p>LinkedIn rewards confidence; HN holds a referendum on the category, not the code. The headline "an ad network inside my coding tool" does the framing, and the framing is a confession. "Earn 50%" reads as selling your attention back for pennies; "inevitable trend" is clipped as the smoking gun. Because brand and founder name are the same surface, the dunk is personal, durable, and searchable.</p>
+      <div class="lab">Underlying assumption</div>
+      <div class="assume">Developers judge the product on how cleanly the ads are implemented, not on the fact that there are ads at all.</div>
+      <div class="lab">Early warning signs</div>
+      <ul>
+        <li>One-sentence pitch makes a dev friend wince or joke, not ask how it works.</li>
+        <li>Top comments engage the category ("ads in my editor"), not the mechanism (does it really not see my code).</li>
+      </ul>
+    </div>
+
+    <div class="card" style="--accent:var(--c5)">
+      <div class="n">Failure 05</div>
+      <div class="sev">MOST DANGEROUS</div>
+      <h3>Trust failure on a trust product</h3>
+      <p>Confirmed: the live npm token sits in plaintext in an un-gitignored scratch file (<code>Untitled</code>), never proven revoked. "Step 0: revoke" was treated as a checkbox, not a gate. A hijacked <code>sponsorline@0.3.1</code> with a postinstall script now does see developer code, hitting the exact security-conscious audience. Ed25519 doesn't save it: npm publish trust is the token, not the seal, and the two chains were never connected.</p>
+      <div class="lab">Underlying assumption</div>
+      <div class="assume">Security hygiene is a task to complete ("I'll revoke it") rather than a gate to prove ("it is revoked and no copy exists on disk").</div>
+      <div class="lab">Early warning signs</div>
+      <ul>
+        <li>A live secret in plaintext, outside the repo and outside .gitignore (verified present).</li>
+        <li>Runbook never proves the token dead (<code>npm token list</code>) before publish, revocation is asserted not verified.</li>
+      </ul>
+    </div>
+
+    <div class="card" style="--accent:var(--c6)">
+      <div class="n">Failure 06</div>
+      <div class="sev">EXECUTION</div>
+      <h3>Solo-founder bandwidth collapse</h3>
+      <p>One launch window where attention, scrutiny, and curiosity peak at once, and one person can occupy only one room. <code>init</code> breaks on a registry-cache propagation issue while the top HN comment questions zero-egress. Fixing the funnel and answering the crowd are mutually exclusive in real time. The unanswered comment hardens into the accepted read; the demand/supply motion sits untouched. By December the product is inert, not dead.</p>
+      <div class="lab">Underlying assumption</div>
+      <div class="assume">Launch-day defense, bug-fixing, and the demand/supply motion arrive sequentially, so one person can time-slice across them.</div>
+      <div class="lab">Early warning signs</div>
+      <ul>
+        <li>Runbook assigns one person to "be present" while the steps most likely to break happen at announce time, no backup named.</li>
+        <li>A hostile top HN comment on the core claim sits unanswered &gt;30 min during peak traffic.</li>
+      </ul>
+    </div>
+
+    <div class="card" style="--accent:var(--c7)">
+      <div class="n">Failure 07</div>
+      <div class="sev">PROMISE GAP</div>
+      <h3>"Earn 50%" outruns payout reality</h3>
+      <p>The only shipped gateway is <code>DryRunGateway</code> (<code>live=false</code>); the live Stripe Connect rail is deliberately unbuilt. Balances accrue but can't leave. The first real payout interaction is a government-ID KYC flow for $3, below the $10 <code>minPayoutCents</code> floor. Devs post "I have to do KYC to withdraw $3 I can't even reach the minimum for." Or, to ship fast, funds get pooled and fanned out, the money-transmitter shape Stripe freezes.</p>
+      <div class="lab">Underlying assumption</div>
+      <div class="assume">Proving a developer is owed money is the hard part, when the hard part is the unbuilt legal/operational rail that actually pays them.</div>
+      <div class="lab">Early warning signs</div>
+      <ul>
+        <li>Repo ships only <code>DryRunGateway</code> while marketing commits to "earn 50%."</li>
+        <li>Settlement log <code>paidCents</code> stays 0 while balances climb; median balance below the $10 floor.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <footer>
+    Premortem run 2026-06-15 on the Sponsorline public launch &middot; 7 parallel investigators &middot; method: Gary Klein prospective hindsight.<br>
+    Synthesis and full transcript: <code>docs/premortem/premortem-transcript-2026-06-15-launch.md</code>
+  </footer>
+</div>
+</body>
+</html>
