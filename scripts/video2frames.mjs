@@ -39,7 +39,7 @@ const ESC = "\x1b";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function parseArgs(argv) {
-  const a = { cols: 64, fps: 12, ramp: " .:-=+*#%@" };
+  const a = { cols: 120, fps: 12, ramp: " .,:;irsXA253hMHGS#9B&@" };
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];
@@ -103,44 +103,170 @@ function decodeRgbFrames(input, cols, rows, fps, seconds) {
   return r.stdout;
 }
 
-// The fixed 64-entry colour cube the index grids address: 4 levels per channel (0,85,170,255)
-// = 4^3 = 64 colours, one per COLOR_ALPHABET character. The decoder reads this palette to
-// regenerate ANSI locally; it is data, never escapes, so the sealed creative stays clean.
-function colorCube() {
-  const p = [];
-  for (let i = 0; i < 64; i++) p.push([((i >> 4) & 3) * 85, ((i >> 2) & 3) * 85, (i & 3) * 85]);
-  return p;
+// Build an adaptive colour palette from the clip itself: median-cut quantisation over a
+// sample of the RGB pixels yields up to 64 representative colours (the COLOR_ALPHABET cap),
+// far closer to the source than a fixed even cube. The palette is plain RGB data sealed into
+// the creative; the decoder regenerates ANSI from it locally, so the sealed bytes stay clean.
+function medianCutPalette(buf, maxColors) {
+  // Sample pixels (cap the working set so quantisation stays fast on long/large clips).
+  const pxCount = Math.floor(buf.length / 3);
+  const target = 40000;
+  const step = Math.max(1, Math.floor(pxCount / target));
+  const px = [];
+  for (let i = 0; i < pxCount; i += step) {
+    const p = i * 3;
+    px.push([buf[p], buf[p + 1], buf[p + 2]]);
+  }
+  if (px.length === 0) return [[0, 0, 0]];
+
+  const boxes = [px];
+  while (boxes.length < maxColors) {
+    // Pick the box with the largest single-channel spread to split next.
+    let bi = -1;
+    let bestRange = -1;
+    let bestCh = 0;
+    for (let i = 0; i < boxes.length; i++) {
+      const box = boxes[i];
+      if (box.length < 2) continue;
+      for (let ch = 0; ch < 3; ch++) {
+        let lo = 255;
+        let hi = 0;
+        for (const q of box) {
+          if (q[ch] < lo) lo = q[ch];
+          if (q[ch] > hi) hi = q[ch];
+        }
+        const range = hi - lo;
+        if (range > bestRange) {
+          bestRange = range;
+          bi = i;
+          bestCh = ch;
+        }
+      }
+    }
+    if (bi < 0) break; // nothing left to split
+    const box = boxes[bi];
+    box.sort((a, b) => a[bestCh] - b[bestCh]);
+    const mid = box.length >> 1;
+    boxes.splice(bi, 1, box.slice(0, mid), box.slice(mid));
+  }
+
+  // Each box collapses to its average colour.
+  return boxes.map((box) => {
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    for (const q of box) {
+      r += q[0];
+      g += q[1];
+      b += q[2];
+    }
+    const n = box.length || 1;
+    return [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
+  });
+}
+
+// sRGB byte -> linear-light component.
+function srgb2lin(c) {
+  c /= 255;
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+
+// Linear sRGB -> OKLab. OKLab is perceptually uniform, so Euclidean distance in it
+// tracks how different two colours LOOK, not just how far apart their raw bytes are.
+// Matching in this space lets a 64-entry palette read far truer to the source.
+function rgb2oklab(r, g, b) {
+  const lr = srgb2lin(r);
+  const lg = srgb2lin(g);
+  const lb = srgb2lin(b);
+  const l = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb;
+  const m = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb;
+  const s = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb;
+  const l_ = Math.cbrt(l);
+  const m_ = Math.cbrt(m);
+  const s_ = Math.cbrt(s);
+  return [
+    0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_,
+    1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_,
+    0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_,
+  ];
+}
+
+// Nearest palette entry for an OKLab triple (perceptual squared distance).
+// `paletteLab` is the palette pre-converted to OKLab so this stays a tight inner loop.
+function nearestColor(paletteLab, L, A, B) {
+  let best = 0;
+  let bestD = Infinity;
+  for (let i = 0; i < paletteLab.length; i++) {
+    const c = paletteLab[i];
+    const dL = L - c[0];
+    const dA = A - c[1];
+    const dB = B - c[2];
+    const d = dL * dL + dA * dA + dB * dB;
+    if (d < bestD) {
+      bestD = d;
+      best = i;
+    }
+  }
+  return best;
 }
 
 // Turn the RGB byte stream into BOTH layers: grayscale ramp glyphs (the always-safe surface)
-// and a parallel index grid into the 64-colour cube. Grids share geometry, so glyph cell
-// (y,x) lines up with colour cell (y,x). Quantise each channel to 2 bits (>>6) for the cube.
-function gridToColorFrames(buf, cols, rows, ramp, invert) {
+// and a parallel index grid into the adaptive palette. Grids share geometry, so glyph cell
+// (y,x) lines up with colour cell (y,x); each colour cell maps to its nearest palette entry.
+function gridToColorFrames(buf, cols, rows, ramp, invert, palette) {
   const cell = cols * rows;
   const stride = cell * 3;
   const count = Math.floor(buf.length / stride);
   const ramps = [...ramp];
+  // Pre-convert the palette to OKLab once; the per-pixel match reuses it.
+  const paletteLab = palette.map((c) => rgb2oklab(c[0], c[1], c[2]));
   const frames = [];
   const colors = [];
   for (let f = 0; f < count; f++) {
     const off = f * stride;
+    // Float working copy of this frame's RGB so Floyd-Steinberg error diffusion can spread
+    // quantisation error into not-yet-visited cells. Dithering the colour layer trades a
+    // little spatial noise for the elimination of flat colour banding, so a 64-entry palette
+    // reads far closer to the source. The glyph layer stays keyed to the ORIGINAL luminance
+    // (undithered) so the audit-safe text surface is deterministic.
+    const work = new Float32Array(stride);
+    for (let i = 0; i < stride; i++) work[i] = buf[off + i];
+    const diffuse = (xx, yy, er, eg, eb, w) => {
+      if (xx < 0 || xx >= cols || yy < 0 || yy >= rows) return;
+      const q = (yy * cols + xx) * 3;
+      work[q] += er * w;
+      work[q + 1] += eg * w;
+      work[q + 2] += eb * w;
+    };
     const glyphLines = [];
     const colorLines = [];
     for (let y = 0; y < rows; y++) {
       let gl = "";
       let cl = "";
       for (let x = 0; x < cols; x++) {
-        const p = off + (y * cols + x) * 3;
-        const r = buf[p];
-        const g = buf[p + 1];
-        const b = buf[p + 2];
-        let lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        const base = (y * cols + x) * 3;
+        const p = off + base;
+        let lum = (0.2126 * buf[p] + 0.7152 * buf[p + 1] + 0.0722 * buf[p + 2]) / 255;
         if (invert) lum = 1 - lum;
         let idx = Math.floor(lum * ramps.length);
         if (idx >= ramps.length) idx = ramps.length - 1;
         if (idx < 0) idx = 0;
         gl += ramps[idx];
-        cl += COLOR_ALPHABET[((r >> 6) << 4) | ((g >> 6) << 2) | (b >> 6)];
+
+        const r = work[base];
+        const g = work[base + 1];
+        const b = work[base + 2];
+        const lab = rgb2oklab(r, g, b);
+        const ci = nearestColor(paletteLab, lab[0], lab[1], lab[2]);
+        cl += COLOR_ALPHABET[ci];
+        const pc = palette[ci];
+        const er = r - pc[0];
+        const eg = g - pc[1];
+        const eb = b - pc[2];
+        diffuse(x + 1, y, er, eg, eb, 7 / 16);
+        diffuse(x - 1, y + 1, er, eg, eb, 3 / 16);
+        diffuse(x, y + 1, er, eg, eb, 5 / 16);
+        diffuse(x + 1, y + 1, er, eg, eb, 1 / 16);
       }
       glyphLines.push(gl);
       colorLines.push(cl);
@@ -237,8 +363,8 @@ async function main() {
   let colors;
   if (a.color) {
     const rgb = decodeRgbFrames(a.input, cols, rows, fps, a.seconds);
-    ({ frames, colors } = gridToColorFrames(rgb, cols, rows, a.ramp, a.invert));
-    palette = colorCube();
+    palette = medianCutPalette(rgb, 64);
+    ({ frames, colors } = gridToColorFrames(rgb, cols, rows, a.ramp, a.invert, palette));
   } else {
     const gray = decodeGrayFrames(a.input, cols, rows, fps, a.seconds);
     frames = gridToFrames(gray, cols, rows, a.ramp, a.invert);
