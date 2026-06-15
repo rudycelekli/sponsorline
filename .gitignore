@@ -3,3 +3,8 @@ dist/
 bench/results/
 *.log
 .DS_Store
+
+# claude-flow / swarm auto-generated state and metrics
+.claude-flow/
+.swarm/
+**/.claude-flow/
