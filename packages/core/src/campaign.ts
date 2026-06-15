@@ -23,13 +23,15 @@ export interface Campaign {
 export interface CampaignPolicy {
   reserveCents: number;
   maxCreative: number; // cap for a plain creative AND the inner text of an effect creative
-  // Animated creatives are a premium inventory class with their own bounds. All optional;
-  // sane defaults apply so existing callers keep working unchanged.
+  // Animated creatives carry extra attack surface (more bytes, motion, colour), so they get
+  // their own safety bounds. All optional; sane defaults apply so existing callers keep
+  // working unchanged. These are limits, not a pricing tier — animation is not premium.
   maxAnimatedChars?: number; // cap on the whole animated spec JSON string (default 4096)
   maxFrames?: number; // cap on frame count for a frames creative (default 240)
   maxFrameChars?: number; // cap on the chars of a single frame (default 1024)
   maxFps?: number; // upper fps bound for a frames creative (default 30)
   maxGrid?: number; // upper bound on cols/rows for a frames creative (default 200)
+  allowFrames?: boolean; // frames are opt-in inventory; default false (effect creatives always allowed)
 }
 
 export interface CampaignValidation {
@@ -44,8 +46,46 @@ const ALLOWED_EFFECTS: ReadonlySet<CreativeEffect> = new Set(["none", "pulse", "
 const CONTROL_CHARS = /[\u0000-\u001F\u007F]/; // every C0/C1 control char incl. newline
 const CONTROL_CHARS_KEEP_NL = /[\u0000-\u0009\u000B-\u001F\u007F]/; // control chars except "\n"
 
+// WCAG 2.3.1 (general flash threshold): nothing may flash more than 3 times/sec. We
+// enforce that at the marketer gate so an unsafe creative can never be sealed, not just
+// suppressed at render time.
+const MIN_FLASH_PERIOD_MS = 333; // a pulse modulates whole-line brightness; floor its period at ~3 cycles/sec
+const MAX_FLASHES_PER_SEC = 3; // ceiling on bright transitions for a looping frames creative
+const FLASH_LUMINANCE_DELTA = 0.1; // minimum luminance jump that counts as a flash edge
+
 function isRgb(v: unknown): v is Rgb {
   return Array.isArray(v) && v.length === 3 && v.every((n) => Number.isInteger(n) && n >= 0 && n <= 255);
+}
+
+// Approximate a frame's relative luminance as the share of non-space cells: an all-filled
+// grid reads as "bright", an all-space grid as "dark". Newlines (row separators) are not
+// cells and are ignored. This is a proxy, not photometry, but it catches the strobe shape
+// a flash attack needs: alternating dark and bright grids.
+function frameLuminance(frame: string): number {
+  let total = 0;
+  let lit = 0;
+  for (const ch of frame) {
+    if (ch === "\n") continue;
+    total += 1;
+    if (ch !== " ") lit += 1;
+  }
+  return total === 0 ? 0 : lit / total;
+}
+
+// Estimate how many times a looping frames creative flashes bright per second. A flash
+// needs a rising luminance edge, so we count edges where luminance jumps by more than the
+// delta threshold, including the wraparound from the last frame back to the first (the loop
+// repeats forever), then scale by how many times the whole loop plays each second.
+function flashesPerSecond(frames: string[], fps: number): number {
+  if (frames.length < 2 || !(fps > 0)) return 0;
+  const lum = frames.map(frameLuminance);
+  let risingEdges = 0;
+  for (let i = 0; i < lum.length; i++) {
+    const next = lum[(i + 1) % lum.length];
+    if (next - lum[i] > FLASH_LUMINANCE_DELTA) risingEdges += 1;
+  }
+  const loopsPerSecond = fps / frames.length;
+  return risingEdges * loopsPerSecond;
 }
 
 // Does this string at least CLAIM to be a tagged creative? Used to tell a genuinely
@@ -77,10 +117,29 @@ function validateAnimated(spec: AnimatedCreative, creative: string, policy: Camp
     if (spec.loopMs !== undefined && (!Number.isFinite(spec.loopMs) || spec.loopMs <= 0 || spec.loopMs > 60_000)) {
       errors.push("loopMs must be a positive number <= 60000");
     }
+    // A pulse modulates the whole line's brightness once per loop, so a short period
+    // strobes. Floor it at MIN_FLASH_PERIOD_MS (WCAG 2.3.1). An omitted loopMs uses a safe
+    // 2000ms default, so this only catches an explicit too-fast value.
+    if (
+      spec.effect === "pulse" &&
+      spec.loopMs !== undefined &&
+      Number.isFinite(spec.loopMs) &&
+      spec.loopMs > 0 &&
+      spec.loopMs < MIN_FLASH_PERIOD_MS
+    ) {
+      errors.push(`loopMs must be >= ${MIN_FLASH_PERIOD_MS} for a pulse effect (flash-safety, WCAG 2.3.1)`);
+    }
     return;
   }
 
   // frames kind
+  // Frames are opt-in inventory: a multi-row animated grid is a far bigger surface than a
+  // single status line, and most hosts never render it. Off by default; a campaign may only
+  // use frames where the policy explicitly enables them. We still run every structural check
+  // below so the marketer sees all problems at once, not just the gate.
+  if (!(policy.allowFrames ?? false)) {
+    errors.push("frames creatives are not enabled for this inventory (allowFrames is off)");
+  }
   const maxFrames = policy.maxFrames ?? 240;
   const maxFrameChars = policy.maxFrameChars ?? 1024;
   const maxFps = policy.maxFps ?? 30;
@@ -106,6 +165,16 @@ function validateAnimated(spec: AnimatedCreative, creative: string, policy: Camp
       errors.push(`frame ${i} has a row wider than ${spec.cols} cols`);
     }
   }
+
+  // WCAG 2.3.1 flash-safety: a frames creative that alternates dark and bright grids is a
+  // strobe. Estimate its flash rate at the declared fps and reject anything over the limit
+  // so an epileptogenic creative can never be sealed into inventory.
+  const flashes = flashesPerSecond(spec.frames, spec.fps);
+  if (flashes > MAX_FLASHES_PER_SEC) {
+    errors.push(
+      `frames flash ${flashes.toFixed(1)} times/sec, over the ${MAX_FLASHES_PER_SEC}/sec flash-safety limit (WCAG 2.3.1)`,
+    );
+  }
 }
 
 export function validateCampaign(c: Campaign, policy: CampaignPolicy): CampaignValidation {
@@ -119,7 +188,8 @@ export function validateCampaign(c: Campaign, policy: CampaignPolicy): CampaignV
   } else {
     const spec = parseCreative(c.creative);
     if (spec !== null) {
-      // Premium animated inventory: validate the inner spec, not the JSON wrapper.
+      // Animated creative: validate the inner spec against its safety bounds, not the
+      // JSON wrapper. Same control-char / length boundary as plain text, plus motion limits.
       validateAnimated(spec, c.creative, policy, errors);
     } else if (looksTagged(c.creative)) {
       // It claims `sl:1` but did not parse into a valid effect/frames spec. Reject with a

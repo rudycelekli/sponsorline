@@ -7,9 +7,11 @@ import {
   validateConsent,
   makeImpression,
   decodeCreative,
+  detectColorLevel,
   Ledger,
   SolverBandit,
   type Bidder,
+  type ColorLevel,
 } from "@effinai/sponsorline-core";
 import { Store } from "./store.js";
 
@@ -27,7 +29,8 @@ export interface StatuslineInput {
   // Render hints for the animated creative. Defaulted from the environment when the
   // caller omits them so the decoder stays pure and the command stays testable.
   cols?: number; // terminal width budget
-  color?: boolean; // false => no ANSI (honors NO_COLOR)
+  colorLevel?: ColorLevel; // terminal colour capability; takes precedence over `color`
+  color?: boolean; // legacy: false => no ANSI (honors NO_COLOR); true => truecolor
   reducedMotion?: boolean; // true => a single static frame (honors SPONSORLINE_REDUCED_MOTION)
 }
 export interface StatuslineOutput { line: string; exitCode: number; }
@@ -46,14 +49,30 @@ export async function runStatusline(input: StatuslineInput): Promise<StatuslineO
   // string in the witness/ledger is never touched; this only shapes the bytes shown
   // on THIS redraw, keyed off the wall-clock the host passes each frame. Defaults are
   // read from the environment so reduced-motion and NO_COLOR are honored out of the box.
-  const show = (creative: string): string =>
-    decodeCreative(creative, {
+  const show = (creative: string): string => {
+    // Resolve terminal colour capability. A precise colorLevel wins; the legacy
+    // boolean still maps (false => none, true => truecolor); otherwise sniff the
+    // environment so we never emit truecolor at a terminal that cannot decode it.
+    const colorLevel: ColorLevel =
+      input.colorLevel ??
+      (input.color === false
+        ? "none"
+        : input.color === true
+          ? "truecolor"
+          : detectColorLevel(process.env, Boolean(process.stdout.isTTY)));
+    // Status-line motion is OFF by default. This is editor chrome that redraws
+    // constantly; it must not move unless the developer opts in. Animate ONLY when
+    // SPONSORLINE_MOTION is set and reduced-motion has not been requested.
+    const motionOptIn = Boolean(process.env.SPONSORLINE_MOTION) && !process.env.SPONSORLINE_REDUCED_MOTION;
+    const reducedMotion = input.reducedMotion ?? !motionOptIn;
+    return decodeCreative(creative, {
       nowMs: input.now,
       oneLine: true,
       cols: input.cols ?? (process.stdout.columns || undefined),
-      color: input.color ?? !process.env.NO_COLOR,
-      reducedMotion: input.reducedMotion ?? Boolean(process.env.SPONSORLINE_REDUCED_MOTION),
+      colorLevel,
+      reducedMotion,
     });
+  };
   try {
     const ctx = JSON.parse(input.stdin) as { workspace?: { current_dir?: string }; model?: { display_name?: string } };
     modelName = ctx.model?.display_name ?? "Claude";

@@ -131,8 +131,9 @@ describe("statusline", () => {
     store.writeInventory([{ id: "a", bidCents: 500, targetSignals: ["lang:ts"], creative }]);
     const rotateMs = 1000;
 
-    const first = await runStatusline({ appDir: animApp, salt: SALT, stdin: ctx(projectdir), now: 0, seed: 42n, rotateMs, color: true });
-    const mid = await runStatusline({ appDir: animApp, salt: SALT, stdin: ctx(projectdir), now: 250, seed: 99n, rotateMs, color: true });
+    // Motion is OFF by default in the status line now (Item 1); this test opts in explicitly.
+    const first = await runStatusline({ appDir: animApp, salt: SALT, stdin: ctx(projectdir), now: 0, seed: 42n, rotateMs, color: true, reducedMotion: false });
+    const mid = await runStatusline({ appDir: animApp, salt: SALT, stdin: ctx(projectdir), now: 250, seed: 99n, rotateMs, color: true, reducedMotion: false });
 
     // Billed exactly once: the second redraw rode the cached re-render path.
     expect(new Store(animApp).readWitness()).toHaveLength(1);

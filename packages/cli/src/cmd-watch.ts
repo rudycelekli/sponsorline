@@ -1,4 +1,4 @@
-import { decodeCreative } from "@effinai/sponsorline-core";
+import { decodeCreative, detectColorLevel, type ColorLevel } from "@effinai/sponsorline-core";
 import { Store } from "./store.js";
 
 // `sponsorline watch` — the opt-in Phase 2 surface. It REPLAYS the creative that was
@@ -20,7 +20,8 @@ export interface WatchInput {
   // Injectable for tests; default to real wall-clock / stdout / env.
   now?: () => number;
   write?: (s: string) => void;
-  color?: boolean;
+  colorLevel?: ColorLevel; // terminal colour capability; takes precedence over `color`
+  color?: boolean; // legacy: false => none, true => truecolor
   reducedMotion?: boolean;
   cols?: number;
   fps?: number; // viewer redraw cadence (default 12)
@@ -42,7 +43,16 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 export async function runWatch(input: WatchInput): Promise<WatchOutput> {
   const write = input.write ?? ((s: string) => process.stdout.write(s));
   const now = input.now ?? (() => Date.now());
-  const color = input.color ?? !process.env.NO_COLOR;
+  // Resolve colour capability the same way the status line does: precise level wins,
+  // legacy boolean maps, else sniff the environment so truecolor never reaches a
+  // terminal that cannot render it.
+  const colorLevel: ColorLevel =
+    input.colorLevel ??
+    (input.color === false
+      ? "none"
+      : input.color === true
+        ? "truecolor"
+        : detectColorLevel(process.env, Boolean(process.stdout.isTTY)));
   const reducedMotion = input.reducedMotion ?? Boolean(process.env.SPONSORLINE_REDUCED_MOTION);
   const cols = input.cols ?? (process.stdout.columns || undefined);
   const fps = input.fps && input.fps > 0 ? input.fps : 12;
@@ -60,7 +70,7 @@ export async function runWatch(input: WatchInput): Promise<WatchOutput> {
   }
 
   const creative = render.lastCreative;
-  const draw = (): string => decodeCreative(creative, { nowMs: now(), color, reducedMotion, cols });
+  const draw = (): string => decodeCreative(creative, { nowMs: now(), colorLevel, reducedMotion, cols });
 
   // Reduced motion: one static frame, no loop. Nothing to animate, so don't spin.
   if (reducedMotion) {

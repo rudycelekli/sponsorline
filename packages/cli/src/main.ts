@@ -65,6 +65,8 @@ export async function main(argv: string[]): Promise<number> {
             "  3. `sponsorline verify`   prove zero code egress + replayable auctions\n" +
             "  4. `sponsorline earnings` see what you've accrued\n" +
             "  5. `sponsorline payout`   how to get paid (identity verification required)\n" +
+            "Your status line stays still by default. Set SPONSORLINE_MOTION=1 to let sponsored\n" +
+            "lines animate, NO_COLOR=1 to drop colour, SPONSORLINE_REDUCED_MOTION=1 to force static.\n" +
             "Opt out anytime with `sponsorline off`.\n",
         );
       }
@@ -129,8 +131,17 @@ export async function main(argv: string[]): Promise<number> {
       return out.exitCode;
     }
     case "watch": {
-      // Opt-in viewer: replays the already-served creative as a live animation. Ctrl-C
-      // (SIGINT) aborts the loop cleanly so the cursor is always restored.
+      // Opt-in viewer: replays the already-served creative as a live animation. The grid
+      // (frames) surface is off by default — a developer must explicitly turn it on with
+      // SPONSORLINE_ENABLE_FRAMES so animation is never a surprise. Effect creatives still
+      // show as a single static line here regardless.
+      if (!process.env.SPONSORLINE_ENABLE_FRAMES) {
+        process.stdout.write(
+          "Animated watch is off by default. Enable it with SPONSORLINE_ENABLE_FRAMES=1 sponsorline watch\n",
+        );
+        return 0;
+      }
+      // Ctrl-C (SIGINT) aborts the loop cleanly so the cursor is always restored.
       const controller = new AbortController();
       const onSigint = () => controller.abort();
       process.once("SIGINT", onSigint);

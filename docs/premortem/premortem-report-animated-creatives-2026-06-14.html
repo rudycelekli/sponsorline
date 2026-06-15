@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Premortem — Sponsorline Animated Creative Format</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --panel: #121829;
+    --panel-2: #161d33;
+    --ink: #e6e9f2;
+    --muted: #9aa3bd;
+    --line: #232c47;
+    --accent: #6ea8fe;
+    --warn: #ffb454;
+    --danger: #ff6b6b;
+    --ok: #59d499;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(1200px 600px at 50% -200px, #131a30 0%, var(--bg) 60%);
+    color: var(--ink);
+    font: 15px/1.6 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 48px 24px 96px; }
+  header.hero { margin-bottom: 40px; }
+  .kicker { color: var(--accent); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; }
+  h1 { font-size: 32px; line-height: 1.2; margin: 8px 0 6px; }
+  .frame { color: var(--muted); font-size: 15px; }
+  .frame b { color: var(--ink); }
+  .meta { margin-top: 14px; color: var(--muted); font-size: 13px; }
+
+  section { margin: 40px 0; }
+  h2 { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 20px; }
+
+  .synth { display: grid; gap: 16px; }
+  .syn-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; }
+  .syn-card h3 { margin: 0 0 8px; font-size: 17px; }
+  .syn-card.likely { border-left: 4px solid var(--warn); }
+  .syn-card.dangerous { border-left: 4px solid var(--danger); }
+  .syn-card.assumption { border-left: 4px solid var(--accent); }
+  .syn-card p { margin: 0; color: #cfd5e8; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; margin-bottom: 10px; }
+  .tag.warn { background: rgba(255,180,84,.15); color: var(--warn); }
+  .tag.danger { background: rgba(255,107,107,.15); color: var(--danger); }
+  .tag.accent { background: rgba(110,168,254,.15); color: var(--accent); }
+
+  ol.plan { counter-reset: step; list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+  ol.plan li { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px 16px 56px; position: relative; }
+  ol.plan li::before { counter-increment: step; content: counter(step); position: absolute; left: 16px; top: 16px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #06101f; font-weight: 800; display: grid; place-items: center; font-size: 13px; }
+  ol.plan li b { color: var(--ink); }
+  ol.plan .maps { color: var(--muted); font-size: 12px; }
+
+  ul.check { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  ul.check li { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px 12px 42px; position: relative; color: #cfd5e8; }
+  ul.check li::before { content: "☐"; position: absolute; left: 16px; top: 11px; color: var(--accent); font-size: 16px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+  .card h3 { margin: 0 0 4px; font-size: 16px; }
+  .card .num { color: var(--muted); font-weight: 700; font-size: 12px; letter-spacing: .08em; }
+  .sev { display: flex; gap: 14px; margin: 12px 0 14px; flex-wrap: wrap; }
+  .sev span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .dots { display: inline-flex; gap: 3px; margin-left: 6px; vertical-align: middle; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #2c3658; }
+  .dot.on-l { background: var(--warn); }
+  .dot.on-d { background: var(--danger); }
+  .card .story { color: #c4cbe2; font-size: 13.5px; margin: 0 0 12px; }
+  .card .lab { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 10px 0 4px; }
+  .card .assume { color: #e6e9f2; font-size: 13.5px; margin: 0; }
+  .card .warns { margin: 4px 0 0; padding-left: 18px; color: #c4cbe2; font-size: 13px; }
+  .card .warns li { margin: 3px 0; }
+  .card.accent-1 { border-top: 3px solid #6ea8fe; }
+  .card.accent-2 { border-top: 3px solid #59d499; }
+  .card.accent-3 { border-top: 3px solid #ffb454; }
+  .card.accent-4 { border-top: 3px solid #c084fc; }
+  .card.accent-5 { border-top: 3px solid #38bdf8; }
+  .card.accent-6 { border-top: 3px solid #ff6b6b; }
+  .card.accent-7 { border-top: 3px solid #f472b6; }
+  .card.accent-8 { border-top: 3px solid #94a3b8; }
+
+  .roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .agent { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 12.5px; }
+  .agent b { display: block; color: var(--accent); font-size: 11px; margin-bottom: 3px; }
+  .agent span { color: var(--muted); }
+
+  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">Premortem · Gary Klein method</div>
+    <h1>Sponsorline Animated Creative Format</h1>
+    <p class="frame"><b>Frame:</b> It is December 2026. The animated sponsor-line creative format has failed. Working backward to explain why.</p>
+    <p class="meta">8 failure modes investigated · 1 parallel agent per mode · synthesized 2026-06-14</p>
+  </header>
+
+  <section>
+    <h2>Synthesis</h2>
+    <div class="synth">
+      <div class="syn-card likely">
+        <span class="tag warn">Most likely failure</span>
+        <h3>The animation doesn't actually animate, and renders as garbage on a meaningful slice of terminals.</h3>
+        <p>Two architectural facts make this near-certain: (1) frame advancement is hostage to a redraw cadence the host owns and Sponsorline never measures, and (2) <code>color</code> is gated on <code>!NO_COLOR</code> alone, with truecolor emitted unconditionally and no <code>COLORTERM</code>/<code>TERM</code>/<code>isTTY</code> probe. On most real machines the status-line "animation" is a frozen or jittering single frame; on non-truecolor or non-TTY hosts it leaks raw escape codes. Fix first: most probable, and it silently nullifies the premise (motion you paid a premium for that does not move).</p>
+      </div>
+      <div class="syn-card dangerous">
+        <span class="tag danger">Most dangerous failure</span>
+        <h3>A photosensitive-epilepsy strobe served through valid, allowlisted inventory.</h3>
+        <p>Low probability, catastrophic impact. The validator caps fps, frame count, and loopMs, none of which bound flash frequency or luminance delta. A two-frame 30fps black/white <code>frames</code> creative, or a 1ms-loop high-chroma <code>pulse</code>, is a WCAG 2.3.1 violation that passes validation today. Because rendering is a pure local transform, there is zero server-side telemetry that it happened until someone is harmed. For a network whose entire brand is trust and safety, one viral incident plus a demand letter is existential.</p>
+      </div>
+      <div class="syn-card assumption">
+        <span class="tag accent">Hidden assumption</span>
+        <h3>That Sponsorline controls the rendering environment.</h3>
+        <p>It controls none of the three things this format depends on: the <b>host</b> owns redraw cadence (so motion may not happen, or may busy-loop visibly), the <b>terminal</b> owns color/escape capability (so output may corrupt), and the <b>developer</b> owns perception (so the same motion reads as either annoyance or surveillance). Every one of the 8 failure modes traces back to assuming control over an environment that belongs to someone else.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The Revised Plan</h2>
+    <ol class="plan">
+      <li><b>Ship motion OFF by default in the status line.</b> Static is the contract opted-in developers actually agreed to. Make motion explicit opt-in via a documented flag surfaced in <code>init</code> output. Defuses annoyance churn, the "busy-loop = tracking" perception, and removes the default redraw loop entirely. <span class="maps">→ maps to #3, #7</span></li>
+      <li><b>Detect terminal capability before emitting ANSI.</b> Gate on a real probe: <code>COLORTERM=truecolor</code> for 24-bit, downgrade to 256-color, then to none; respect <code>isTTY</code> so non-interactive sinks never get escapes. Never emit truecolor unconditionally. <span class="maps">→ maps to #1</span></li>
+      <li><b>Stop selling/charging "premium" until lift is measured.</b> Remove the "premium inventory class" framing from <code>campaign.ts</code>; animated and plain clear the same auction. Keep the size/effect caps, justified as safety regardless of pricing. Introduce a tier only after a controlled A/B shows real lift. <span class="maps">→ maps to #4, #8</span></li>
+      <li><b>Add WCAG 2.3.1 flash-safety validation.</b> Reject <code>pulse</code> with effective period &lt;333ms (a <code>loopMs</code> floor), and reject <code>frames</code> whose consecutive relative-luminance delta exceeds ~10% more than 3 times/sec. Cap chroma/contrast swing. Add tests that the 30fps black/white strobe and the 1ms-loop red pulse are REJECTED. <span class="maps">→ maps to #6</span></li>
+      <li><b>Feature-flag or shelve <code>frames</code>/<code>watch</code> until an advertiser actually wants frames.</b> Do not carry the most security-sensitive, newline-preserving half of the schema in the audited default surface for zero traffic. Keep <code>effect</code> as the live format; gate <code>frames</code> behind a flag that is off by default. <span class="maps">→ maps to #5, #8</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Pre-Launch Checklist</h2>
+    <ul class="check">
+      <li><b>Terminal capability matrix test</b> across tmux (no <code>Tc</code>), <code>xterm</code>, Git Bash, VS Code integrated, JetBrains, SSH, and a CI log-pipe: confirm zero raw-escape leakage and zero corrupted renders. (#1)</li>
+      <li><b>Instrument inter-redraw interval and frame-identity rate</b> in a canary before charging anything: only call motion "real" if frame-identity is &lt;30% and median redraw interval beats the frame period. (#2, #4)</li>
+      <li><b>Flash-safety validator with red-team tests</b>: the black/white 30fps strobe and the 1ms-loopMs high-chroma pulse must fail validation; commit these as test cases. (#6)</li>
+      <li><b>Default-off motion + documented opt-in</b>: verify <code>init</code> output explains the motion flag and <code>SPONSORLINE_REDUCED_MOTION</code>, and that a fresh install shows a static line. (#3, #7)</li>
+      <li><b>Explicit keep/shelve decision on <code>frames</code>/<code>watch</code></b>: if kept, ship behind an off-by-default flag, excluded from the default audit surface until there is advertiser demand and proven <code>effect</code>-lift. (#5, #8)</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Failure Modes · Deep Dives</h2>
+    <div class="grid">
+
+      <div class="card accent-1">
+        <div class="num">FAILURE 01</div>
+        <h3>Terminal incompatibility and corruption</h3>
+        <div class="sev">
+          <span>Likelihood <span class="dots"><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot"></i></span></span>
+          <span>Impact <span class="dots"><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot"></i><i class="dot"></i></span></span>
+        </div>
+        <p class="story">Decoder gates ANSI on <code>!NO_COLOR</code> alone, then emits truecolor unconditionally with no <code>TERM</code>/<code>COLORTERM</code>/<code>isTTY</code> probe. Non-truecolor hosts (old tmux, basic SSH, Git Bash, JetBrains) leak literal escape text; shimmer emits one escape per char, becoming dozens of fragments. Non-interactive capture accumulates megabytes of escapes. A "Sponsorline broke my terminal" screenshot spikes opt-out before the zero-egress story is heard.</p>
+        <div class="lab">Underlying assumption</div>
+        <p class="assume">That honoring <code>NO_COLOR</code> is equivalent to detecting terminal capability.</p>
+        <div class="lab">Early warning signs</div>
+        <ul class="warns"><li>Opt-out among non-truecolor/non-TTY environments &gt;2x the truecolor-TTY baseline in 30 days.</li><li>Host redraw interval exceeds the creative's frame period (e.g. &gt;150ms against 83ms).</li></ul>
+      </div>
+
+      <div class="card accent-2">
+        <div class="num">FAILURE 02</div>
+        <h3>Host doesn't redraw often enough to animate</h3>
+        <div class="sev">
+          <span>Likelihood <span class="dots"><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot on-l"></i></span></span>
+          <span>Impact <span class="dots"><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot"></i><i class="dot"></i></span></span>
+        </div>
+        <p class="story">The demo's motion came from <code>watch</code>'s own 12fps loop, not the status line being sold. In production the status line renders once per host invocation; the host redraws on events, not a cadence. Engineers saw a frozen frame for 20-40s then a jump. Advertisers diffed rendered bytes and found 60-80% of impressions byte-identical to the prior frame. The premium tier got reclassified as static; refunds issued.</p>
+        <div class="lab">Underlying assumption</div>
+        <p class="assume">That an event-driven host redraws often and regularly enough to look like animation, when frame advancement is hostage to a cadence Sponsorline neither controls nor measures.</p>
+        <div class="lab">Early warning signs</div>
+        <ul class="warns"><li>Median gap between <code>runStatusline</code> calls &gt;~200ms (stutter) or tens of seconds (static).</li><li>&gt;~30% of consecutive emissions have identical decoded bytes.</li></ul>
+      </div>
+
+      <div class="card accent-3">
+        <div class="num">FAILURE 03</div>
+        <h3>Motion perceived as annoying / distracting</h3>
+        <div class="sev">
+          <span>Likelihood <span class="dots"><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot"></i></span></span>
+          <span>Impact <span class="dots"><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot"></i></span></span>
+        </div>
+        <p class="story">Shimmer keyed to <code>input.now</code> runs on every host repaint, and Claude Code repaints on nearly every keystroke. The sweep never stops, pulsing in peripheral vision through every debugging session. The static-line cohort had bargained for a quiet, dead line in exchange for getting paid; motion broke that bargain unilaterally. Supply eroded fastest among the most engaged power users, exactly the high-value inventory.</p>
+        <div class="lab">Underlying assumption</div>
+        <p class="assume">That developers who tolerated a static line had consented to attention capture, when they had consented precisely to its absence of motion.</p>
+        <div class="lab">Early warning signs</div>
+        <ul class="warns"><li><code>SPONSORLINE_REDUCED_MOTION</code> adoption climbing among retained users.</li><li>Uninstall rate for the animated cohort exceeding static baseline within 7 days of exposure.</li></ul>
+      </div>
+
+      <div class="card accent-4">
+        <div class="num">FAILURE 04</div>
+        <h3>"Premium animated inventory" is a billing fiction</h3>
+        <div class="sev">
+          <span>Likelihood <span class="dots"><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot"></i></span></span>
+          <span>Impact <span class="dots"><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot"></i><i class="dot"></i></span></span>
+        </div>
+        <p class="story"><code>validateAnimated</code> calls animation a "premium inventory class," but <code>campaignToBidder</code> flattens every campaign into one <code>bidCents</code> feeding the same Vickrey auction. "Premium" lived only in a validation message. Advertisers asked for the lift report; there was none, because billing seals the creative as an opaque string. Buyers reverted to plain-text bids that cleared the identical auction at the identical price.</p>
+        <div class="lab">Underlying assumption</div>
+        <p class="assume">That labeling a creative "premium" translates into willingness-to-pay, without any billing tier or lift measurement to make it real or provable.</p>
+        <div class="lab">Early warning signs</div>
+        <ul class="warns"><li>Effective CPM for animated vs plain within the same cohort stays within noise (&lt;5% delta).</li><li>Advertiser renewal rate on animated campaigns falls below plain-text.</li></ul>
+      </div>
+
+      <div class="card accent-5">
+        <div class="num">FAILURE 05</div>
+        <h3><code>sponsorline watch</code> is a feature nobody uses</h3>
+        <div class="sev">
+          <span>Likelihood <span class="dots"><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot"></i></span></span>
+          <span>Impact <span class="dots"><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></span></span>
+        </div>
+        <p class="story">September metrics: <code>watch</code> invocations were 0.3% of installs, 80% single-run. Developers use Claude Code to write code, not watch ads. Meanwhile the <code>frames</code> half (cols/rows/fps caps, 240-frame limit, per-frame sanitization) was the most security-sensitive code in the project, the only path emitting multi-row output with newlines preserved. Every audit re-litigated terminal-injection risk on a feature with no audience.</p>
+        <div class="lab">Underlying assumption</div>
+        <p class="assume">That building a surface for <code>frames</code> would create demand for <code>frames</code>, when the developer had no reason to look at it.</p>
+        <div class="lab">Early warning signs</div>
+        <ul class="warns"><li><code>watch</code> invocations per install per week under ~1, repeat-run under 10%.</li><li>Zero <code>frames</code>-kind creatives submitted; <code>effect</code> is 100% of served inventory.</li></ul>
+      </div>
+
+      <div class="card accent-6">
+        <div class="num">FAILURE 06</div>
+        <h3>Advertiser abuse via motion (accessibility)</h3>
+        <div class="sev">
+          <span>Likelihood <span class="dots"><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></span></span>
+          <span>Impact <span class="dots"><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot on-d"></i></span></span>
+        </div>
+        <p class="story">The validator did what it was told (<code>fps&lt;=30</code>, <code>frames&lt;=240</code>, <code>loopMs&gt;0</code>). An advertiser shipped a valid two-frame <code>fps:30</code> creative alternating pure black and white: a 15 Hz strobe, 5x the WCAG 2.3.1 ceiling. <code>pulse</code> with <code>loopMs:1</code> became a high-frequency red flash. Pure local transform meant zero server-side telemetry. A photosensitive developer had a seizure; "Sponsorline gave my coworker a seizure" hit front page in 48 hours alongside a demand letter.</p>
+        <div class="lab">Underlying assumption</div>
+        <p class="assume">That enforcing structural caps (fps, frame count, loopMs) equals enforcing perceptual safety, when flash hazard is a function of luminance-delta and frequency, neither measured.</p>
+        <div class="lab">Early warning signs</div>
+        <ul class="warns"><li>Static analysis finds any creative with luminance transitions/sec &gt;3 (or pulse period &lt;333ms): count must be 0.</li><li>Share of approved creatives with frame-to-frame luminance delta &gt;10% AND flash period &lt;333ms rising.</li></ul>
+      </div>
+
+      <div class="card accent-7">
+        <div class="num">FAILURE 07</div>
+        <h3>Trust erosion through perception</h3>
+        <div class="sev">
+          <span>Likelihood <span class="dots"><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot"></i></span></span>
+          <span>Impact <span class="dots"><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot on-d"></i></span></span>
+        </div>
+        <p class="story">To make pulse/shimmer move, the status line redraws ~every 80ms. A skeptic running <code>strace</code>/<code>dtruss</code> saw the process waking dozens of times a second. The decode was pure and local, but "constantly redrawing" looks identical to a beacon to someone primed to distrust. The source-available proof became a liability: skeptics read the code, found a render loop, posted "told you so." Churn concentrated among the privacy-skeptical supply the network couldn't replace.</p>
+        <div class="lab">Underlying assumption</div>
+        <p class="assume">That trust comes from the code being provably pure, when it actually comes from the tool behaving inert, and a wall-clock-driven redraw loop visibly is not inert.</p>
+        <div class="lab">Early warning signs</div>
+        <ul class="warns"><li>Rising <code>SPONSORLINE_REDUCED_MOTION=1</code> adoption plus uninstall spike within 48h of first animated render.</li><li>Any external observation of redraw frequency/CPU wakeups framed as suspicion.</li></ul>
+      </div>
+
+      <div class="card accent-8">
+        <div class="num">FAILURE 08</div>
+        <h3>Complexity outran payoff</h3>
+        <div class="sev">
+          <span>Likelihood <span class="dots"><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot on-l"></i><i class="dot"></i><i class="dot"></i></span></span>
+          <span>Impact <span class="dots"><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot on-d"></i><i class="dot"></i><i class="dot"></i></span></span>
+        </div>
+        <p class="story">~885 lines of source-plus-test for animation, all clean and well-tested. None of it was wrong; it was never needed. Lift over a static line was never proven, because the format predated any traffic to A/B against. At the first enterprise security review a reviewer opened <code>creative.ts</code>, saw raw truecolor generation and a <code>frames</code> kind emitting multi-row grids with newlines kept, and escalated. The dual control-char regexes became a three-meeting fixation. The format became a tax: every audit reopened the ANSI/decoder surface.</p>
+        <div class="lab">Underlying assumption</div>
+        <p class="assume">That animation would deliver enough engagement lift to justify a permanent expansion of the security-audit surface, believed strongly enough to build on but never measured.</p>
+        <div class="lab">Early warning signs</div>
+        <ul class="warns"><li>Frames-kind near 0% while effect-kind ~100%: half the audited surface carries no traffic.</li><li>Enterprise reviews citing <code>creative.ts</code>/ANSI average 2+ extra cycles vs plain-text.</li></ul>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>Round-Robin · 8 Parallel Investigators</h2>
+    <div class="roster">
+      <div class="agent"><b>Agent 01</b><span>Terminal corruption</span></div>
+      <div class="agent"><b>Agent 02</b><span>Host redraw cadence</span></div>
+      <div class="agent"><b>Agent 03</b><span>Motion annoyance</span></div>
+      <div class="agent"><b>Agent 04</b><span>Premium billing fiction</span></div>
+      <div class="agent"><b>Agent 05</b><span>watch unused</span></div>
+      <div class="agent"><b>Agent 06</b><span>Strobe / accessibility</span></div>
+      <div class="agent"><b>Agent 07</b><span>Trust perception</span></div>
+      <div class="agent"><b>Agent 08</b><span>Complexity vs payoff</span></div>
+    </div>
+  </section>
+
+  <footer>
+    Premortem · Sponsorline animated creative format (<code>sl:1</code> effect + frames schema) · generated 2026-06-14 · 8 failure modes, 8 parallel investigators · full reasoning in <code>premortem-transcript-animated-creatives-2026-06-14.md</code>
+  </footer>
+
+</div>
+</body>
+</html>

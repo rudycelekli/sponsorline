@@ -69,6 +69,8 @@ describe("validateCampaign — animated creatives", () => {
     JSON.stringify({ sl: 1, kind: "effect", text: "Acme CI", effect: "pulse", ...over });
   const frames = (over: Record<string, unknown> = {}): string =>
     JSON.stringify({ sl: 1, kind: "frames", cols: 2, rows: 1, fps: 4, frames: ["AA", "BB"], ...over });
+  // Frames are opt-in inventory (Item 5); enable them for the frames-specific structural tests.
+  const FRAMES_POLICY = { ...POLICY, allowFrames: true };
 
   it("accepts a well-formed effect creative", () => {
     const v = validateCampaign({ ...base, creative: effect() }, POLICY);
@@ -76,10 +78,16 @@ describe("validateCampaign — animated creatives", () => {
     expect(v.errors).toEqual([]);
   });
 
-  it("accepts a well-formed frames creative", () => {
-    const v = validateCampaign({ ...base, creative: frames() }, POLICY);
+  it("accepts a well-formed frames creative when frames are enabled", () => {
+    const v = validateCampaign({ ...base, creative: frames() }, FRAMES_POLICY);
     expect(v.ok).toBe(true);
     expect(v.errors).toEqual([]);
+  });
+
+  it("rejects a frames creative when frames are not enabled (default off)", () => {
+    const v = validateCampaign({ ...base, creative: frames() }, POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/not enabled|allowFrames/i);
   });
 
   it("rejects an effect outside the allowlist", () => {
@@ -113,41 +121,54 @@ describe("validateCampaign — animated creatives", () => {
   });
 
   it("rejects an fps above the cap", () => {
-    const v = validateCampaign({ ...base, creative: frames({ fps: 120 }) }, POLICY);
+    const v = validateCampaign({ ...base, creative: frames({ fps: 120 }) }, FRAMES_POLICY);
     expect(v.ok).toBe(false);
     expect(v.errors.join(" ")).toMatch(/fps/i);
   });
 
   it("rejects too many frames", () => {
     const many = Array.from({ length: 300 }, () => "AA");
-    const v = validateCampaign({ ...base, creative: frames({ frames: many }) }, POLICY);
+    const v = validateCampaign({ ...base, creative: frames({ frames: many }) }, FRAMES_POLICY);
     expect(v.ok).toBe(false);
     expect(v.errors.join(" ")).toMatch(/frame.*cap/i);
   });
 
   it("rejects a frame wider than the declared grid", () => {
-    const v = validateCampaign({ ...base, creative: frames({ frames: ["AAAA", "BB"] }) }, POLICY);
+    const v = validateCampaign({ ...base, creative: frames({ frames: ["AAAA", "BB"] }) }, FRAMES_POLICY);
     expect(v.ok).toBe(false);
     expect(v.errors.join(" ")).toMatch(/wider than .* cols/i);
   });
 
   it("rejects a frame with more rows than declared", () => {
-    const v = validateCampaign({ ...base, creative: frames({ rows: 1, frames: ["AA\nBB"] }) }, POLICY);
+    const v = validateCampaign({ ...base, creative: frames({ rows: 1, frames: ["AA\nBB"] }) }, FRAMES_POLICY);
     expect(v.ok).toBe(false);
     expect(v.errors.join(" ")).toMatch(/more than .* rows/i);
   });
 
   it("rejects control characters inside a frame (but allows newlines)", () => {
-    const v = validateCampaign({ ...base, creative: frames({ rows: 2, frames: ["AA\u0007", "BB"] }) }, POLICY);
+    const v = validateCampaign({ ...base, creative: frames({ rows: 2, frames: ["AA\u0007", "BB"] }) }, FRAMES_POLICY);
     expect(v.ok).toBe(false);
     expect(v.errors.join(" ")).toMatch(/control/i);
   });
 
   it("rejects a frames spec exceeding the animated byte cap", () => {
     const big = Array.from({ length: 50 }, () => "A".repeat(20));
-    const v = validateCampaign({ ...base, creative: frames({ cols: 20, frames: big }) }, { ...POLICY, maxAnimatedChars: 100 });
+    const v = validateCampaign({ ...base, creative: frames({ cols: 20, frames: big }) }, { ...FRAMES_POLICY, maxAnimatedChars: 100 });
     expect(v.ok).toBe(false);
     expect(v.errors.join(" ")).toMatch(/animated creative exceeds/i);
+  });
+
+  it("rejects a strobing frames creative (WCAG 2.3.1 flash-safety)", () => {
+    // A dark grid alternating with a fully-lit grid at 30fps flashes ~15 times/sec.
+    const v = validateCampaign({ ...base, creative: frames({ cols: 2, rows: 1, fps: 30, frames: ["  ", "\u2588\u2588"] }) }, FRAMES_POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/flash/i);
+  });
+
+  it("rejects a pulse with a strobe-fast loop (WCAG 2.3.1 flash-safety)", () => {
+    const v = validateCampaign({ ...base, creative: effect({ effect: "pulse", loopMs: 1 }) }, POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/flash|loopMs/i);
   });
 
   it("rejects a malformed sl:1 spec instead of serving it as plain text", () => {
