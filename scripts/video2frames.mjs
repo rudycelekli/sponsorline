@@ -27,15 +27,21 @@
 //                 frames stay grayscale-safe; colour is generated locally at display time
 //                 and degrades to grayscale on NO_COLOR / a pipe.
 //   --oneline     preview the status-line collapse (first row only)
+//   --pixels      preview-only half-block render: stacks two colour cells into one ▀ glyph
+//                 (top=foreground, bottom=background) for a real-image look at a normal font.
+//                 Implies --color. Does NOT change the sealed bytes; the device still shows
+//                 the glyph frames. Needs a colour terminal; degrades to glyphs on NO_COLOR.
 //   --json        print only the sealed creative JSON, do not play
 //   --out FILE    write the sealed creative JSON to FILE
 //   --no-play     transcode + validate, but do not animate
 
 import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
-import { decodeCreative, validateCampaign, detectColorLevel, COLOR_ALPHABET } from "../packages/core/dist/index.js";
+import { decodeCreative, validateCampaign, detectColorLevel, COLOR_ALPHABET, colorIndexOf } from "../packages/core/dist/index.js";
 
 const ESC = "\x1b";
+const RESET = `${ESC}[0m`;
+const DEFAULT_FG = [216, 216, 216];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function parseArgs(argv) {
@@ -46,6 +52,7 @@ function parseArgs(argv) {
     if (t === "--invert") a.invert = true;
     else if (t === "--color") a.color = true;
     else if (t === "--oneline") a.oneline = true;
+    else if (t === "--pixels") a.pixels = true;
     else if (t === "--json") a.json = true;
     else if (t === "--no-play") a.noPlay = true;
     else if (t === "--cols") a.cols = Number(argv[++i]);
@@ -305,24 +312,96 @@ function gridToFrames(buf, cols, rows, ramp, invert) {
   return frames;
 }
 
+// --- Half-block ("pixels") preview rendering ------------------------------------------
+//
+// A marketer preview-only display mode. The sealed creative is byte-identical; this just
+// draws each colour cell with twice the vertical density by stacking two cells into one
+// upper-half-block glyph (U+2580): the top cell paints the foreground, the bottom cell the
+// background. The result reads like a real image at a normal font instead of like text.
+// It is NOT what the on-device decoder renders (the device shows the glyph frames); colour
+// is still generated locally at display, so the zero-egress / no-escapes-in-sealed-bytes
+// properties are untouched.
+
+function clamp8(n) {
+  return Math.max(0, Math.min(255, Math.round(n)));
+}
+
+// xterm 256-colour index for an RGB triple (mirrors the core decoder's quantiser so a
+// 256-colour terminal sees the same downsample the device would).
+function rgbToAnsi256(r, g, b) {
+  if (r === g && g === b) {
+    if (r < 8) return 16;
+    if (r > 248) return 231;
+    return Math.round(((r - 8) / 247) * 24) + 232;
+  }
+  return 16 + 36 * Math.round((r / 255) * 5) + 6 * Math.round((g / 255) * 5) + Math.round((b / 255) * 5);
+}
+
+function sgr(rgb, level, ground) {
+  if (level === "none") return "";
+  const r = clamp8(rgb[0]);
+  const g = clamp8(rgb[1]);
+  const b = clamp8(rgb[2]);
+  const sel = ground === "bg" ? 48 : 38;
+  if (level === "ansi256") return `${ESC}[${sel};5;${rgbToAnsi256(r, g, b)}m`;
+  return `${ESC}[${sel};2;${r};${g};${b}m`;
+}
+
+function paletteAt(palette, ch) {
+  if (ch === undefined) return DEFAULT_FG;
+  const ci = colorIndexOf(ch);
+  return ci >= 0 && ci < palette.length ? palette[ci] : DEFAULT_FG;
+}
+
+// Render one frame's colour index-grid as ceil(rows/2) lines of half-blocks. Pairs of
+// source rows collapse into one output row: top -> foreground, bottom -> background.
+function renderPixelFrame(spec, idx, level) {
+  const palette = Array.isArray(spec.palette) ? spec.palette : [];
+  const grid = (Array.isArray(spec.colors) ? spec.colors[idx] : "") ?? "";
+  const gridRows = grid.split("\n");
+  const out = [];
+  for (let y = 0; y < gridRows.length; y += 2) {
+    const top = gridRows[y] ?? "";
+    const bottom = gridRows[y + 1]; // undefined on a final, unpaired row
+    const width = Math.max(top.length, bottom ? bottom.length : 0);
+    let line = "";
+    for (let x = 0; x < width; x++) {
+      line += sgr(paletteAt(palette, top[x]), level, "fg");
+      if (bottom !== undefined) line += sgr(paletteAt(palette, bottom[x]), level, "bg");
+      line += "\u2580"; // upper half block
+    }
+    out.push(line + RESET);
+  }
+  return out.join("\n");
+}
+
 // Animate a frames creative in place by replaying it through the on-device decoder. Each
 // redraw moves the cursor back up over the previous grid so the clip plays without scrolling.
-async function play(creative, rows, fps, cols, oneLine, frameCount, colorLevel) {
+// With `pixels`, the colour layer is drawn as half-blocks instead (preview-only).
+async function play(creative, rows, fps, cols, oneLine, frameCount, colorLevel, pixels) {
   const loopMs = (frameCount / fps) * 1000;
   const durationMs = Math.max(4000, loopMs); // play through once (clips can be long)
   const start = Date.now();
+  const spec = pixels && !oneLine ? JSON.parse(creative) : null;
   process.stdout.write(ESC + "[?25l"); // hide cursor
   let first = true;
   try {
     while (Date.now() - start < durationMs) {
       const nowMs = Date.now() - start;
-      const out = decodeCreative(
-        creative,
-        oneLine
-          ? { nowMs, reducedMotion: false, oneLine: true, cols, colorLevel }
-          : { nowMs, reducedMotion: false, colorLevel },
-      );
-      const drawnRows = oneLine ? 1 : rows;
+      let out;
+      if (spec) {
+        // Same clock the on-device decoder uses, so the preview advances in lockstep.
+        const fi = ((Math.floor((nowMs / 1000) * fps) % frameCount) + frameCount) % frameCount;
+        out = renderPixelFrame(spec, fi, colorLevel);
+      } else {
+        out = decodeCreative(
+          creative,
+          oneLine
+            ? { nowMs, reducedMotion: false, oneLine: true, cols, colorLevel }
+            : { nowMs, reducedMotion: false, colorLevel },
+        );
+      }
+      const drawnRows = oneLine ? 1 : pixels ? Math.ceil(rows / 2) : rows;
       if (!first) process.stdout.write(`${ESC}[${drawnRows}F`); // cursor back to grid top
       const lines = out.split("\n");
       for (let r = 0; r < drawnRows; r++) {
@@ -339,13 +418,14 @@ async function play(creative, rows, fps, cols, oneLine, frameCount, colorLevel) 
 async function main() {
   const a = parseArgs(process.argv.slice(2));
   if (!a.input) {
-    process.stderr.write("usage: node scripts/video2frames.mjs <input.mp4|input.gif> [--cols N] [--rows N] [--fps N] [--seconds S] [--ramp STR] [--invert] [--color] [--oneline] [--json] [--out FILE] [--no-play]\n");
+    process.stderr.write("usage: node scripts/video2frames.mjs <input.mp4|input.gif> [--cols N] [--rows N] [--fps N] [--seconds S] [--ramp STR] [--invert] [--color] [--pixels] [--oneline] [--json] [--out FILE] [--no-play]\n");
     process.exit(2);
   }
   if (!ffmpegOk()) {
     process.stderr.write("ffmpeg is required to transcode. Install it (e.g. `brew install ffmpeg`) and retry.\n");
     process.exit(1);
   }
+  if (a.pixels) a.color = true; // half-block preview reads from the colour layer
 
   const cols = Math.max(1, Math.round(a.cols));
   const fps = Math.max(1, Math.min(30, Math.round(a.fps)));
@@ -426,9 +506,17 @@ async function main() {
   if (a.noPlay) return;
 
   const level = detectColorLevel(process.env, Boolean(process.stdout.isTTY));
-  log(`Playing through the on-device decoder (Ctrl-C to stop)... terminal colour: ${level}`);
-  await play(creative, rows, fps, cols, a.oneline, frames.length, level);
-  log("Done. The device renders exactly these bytes; no video was ever sent to it.");
+  const usePixels = Boolean(a.pixels) && !a.oneline && level !== "none";
+  if (a.pixels && level === "none") log("Note: --pixels needs colour; this terminal reports none, falling back to glyphs.");
+  if (usePixels) {
+    log(`Playing the half-block marketer preview (Ctrl-C to stop)... terminal colour: ${level}`);
+    await play(creative, rows, fps, cols, a.oneline, frames.length, level, true);
+    log("Done. This half-block view is a marketer preview only. The sealed bytes are unchanged and the device renders the glyph frames (run without --pixels to see that).");
+  } else {
+    log(`Playing through the on-device decoder (Ctrl-C to stop)... terminal colour: ${level}`);
+    await play(creative, rows, fps, cols, a.oneline, frames.length, level, false);
+    log("Done. The device renders exactly these bytes; no video was ever sent to it.");
+  }
 }
 
 main().catch((e) => {

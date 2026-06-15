@@ -559,6 +559,7 @@ npx sponsorline verify">Copy</button>
           <div class="pv-ctrl"><label>Palette colors <span class="v" id="pv-vColors">256</span></label><input type="range" id="pv-cColors" min="8" max="256" step="8" value="256"></div>
           <div class="pv-ctrl"><label>&nbsp;</label><span class="pv-toggle"><input type="checkbox" id="pv-cColor" checked> <label for="pv-cColor" style="margin:0">Color layer</label></span></div>
           <div class="pv-ctrl"><label>&nbsp;</label><span class="pv-toggle"><input type="checkbox" id="pv-cInvert"> <label for="pv-cInvert" style="margin:0">Invert (light terminal)</label></span></div>
+          <div class="pv-ctrl"><label>&nbsp;</label><span class="pv-toggle"><input type="checkbox" id="pv-cPixels"> <label for="pv-cPixels" style="margin:0">Pixels (half-block)</label></span></div>
         </div>
       </div>
 
@@ -798,6 +799,35 @@ npx sponsorline verify">Copy</button>
     }
     return html;
   }
+  // Half-block ("pixels") render: stack two color rows into one U+2580 cell, top
+  // color = foreground, bottom color = background. Doubles vertical density so the
+  // preview reads as a real image. Display-only; the sealed bytes are unchanged
+  // and never carry color. Mirrors --pixels in scripts/video2frames.mjs.
+  var DEFAULT_FG=[216,216,216];
+  function palAt(palette,ch){ if(ch===undefined) return DEFAULT_FG; var ci=COLOR_INDEX.has(ch)?COLOR_INDEX.get(ch):-1; return (ci>=0&&ci<palette.length)?palette[ci]:DEFAULT_FG; }
+  function renderPixelFrameHtml(spec,fi){
+    if(!spec.palette||!spec.colors) return esc(spec.frames[fi]);
+    var rowsArr=spec.colors[fi].split("\n"), html="";
+    for(var y=0;y<rowsArr.length;y+=2){
+      var top=rowsArr[y]||"", hasBottom=(y+1<rowsArr.length), bottom=hasBottom?rowsArr[y+1]:"";
+      var width=Math.max(top.length, hasBottom?bottom.length:0);
+      var run="", runKey=null;
+      var flush=function(){
+        if(run==="") return;
+        html+='<span style="'+runKey+'">'+run+'</span>'; run="";
+      };
+      for(var x=0;x<width;x++){
+        var tc=palAt(spec.palette, top[x]);
+        var style="color:rgb("+tc[0]+","+tc[1]+","+tc[2]+")";
+        if(hasBottom){ var bc=palAt(spec.palette, bottom[x]); style+=";background-color:rgb("+bc[0]+","+bc[1]+","+bc[2]+")"; }
+        if(style!==runKey){ flush(); runKey=style; }
+        run+="\u2580";
+      }
+      flush();
+      html+=(y+2<rowsArr.length?"\n":"");
+    }
+    return html;
+  }
 
   var vid=document.getElementById("pv-vid"), cv=document.getElementById("pv-cv");
   var cvx=cv.getContext("2d",{willReadFrequently:true});
@@ -811,6 +841,8 @@ npx sponsorline verify">Copy</button>
   function bindRange(id,vid2){ var r=el(id),v=el(vid2); var f=function(){v.textContent=r.value;}; r.addEventListener("input",f); f(); }
   bindRange("pv-cCols","pv-vCols"); bindRange("pv-cFps","pv-vFps"); bindRange("pv-cSecs","pv-vSecs"); bindRange("pv-cColors","pv-vColors");
 
+  function pixelsActive(){ return el("pv-cPixels").checked && spec && spec.palette && spec.colors; }
+  function buildFrameHtml(){ if(!spec) return; var px=pixelsActive(); frameHtml=[]; for(var i=0;i<spec.frames.length;i++) frameHtml.push(px?renderPixelFrameHtml(spec,i):renderFrameHtml(spec,i)); if(playIdx>=frameHtml.length) playIdx=0; }
   function fitScreen(cols){ var paneW=screen.clientWidth-32; var fs=Math.floor((paneW/cols)/0.62); fs=Math.max(4,Math.min(14,fs)); screen.style.fontSize=fs+"px"; }
   function drawFrame(){ if(!spec) return; screen.classList.remove("empty"); screen.innerHTML=frameHtml[playIdx]; el("pv-frameno").textContent="frame "+(playIdx+1)+" / "+frameHtml.length; }
   function tick(){ playIdx=(playIdx+1)%frameHtml.length; drawFrame(); }
@@ -819,6 +851,7 @@ npx sponsorline verify">Copy</button>
 
   el("pv-play").onclick=function(){ if(!spec) return; if(timer) stopPlay(); else startPlay(); };
   el("pv-step").onclick=function(){ if(!spec) return; stopPlay(); tick(); };
+  el("pv-cPixels").addEventListener("change",function(){ if(!spec) return; buildFrameHtml(); fitScreen(spec.cols); drawFrame(); });
 
   function process(file){
     if(busy) return Promise.resolve();
@@ -885,7 +918,7 @@ npx sponsorline verify">Copy</button>
     spec = withColor ? {sl:1,kind:"frames",cols:cols,rows:rows,fps:fps,frames:frames,palette:palette,colors:colorGrids}
                      : {sl:1,kind:"frames",cols:cols,rows:rows,fps:fps,frames:frames};
     var json=JSON.stringify(spec);
-    frameHtml=[]; for(var i=0;i<frames.length;i++) frameHtml.push(renderFrameHtml(spec,i));
+    buildFrameHtml();
     el("pv-fUp").textContent="0 bytes";
     el("pv-fPal").innerHTML = withColor ? (palette.length+" <small>colors</small>") : "<small>grayscale</small>";
     el("pv-fFrames").textContent=String(frames.length);
