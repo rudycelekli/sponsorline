@@ -64,6 +64,104 @@ describe("validateCampaign", () => {
   });
 });
 
+describe("validateCampaign — animated creatives", () => {
+  const effect = (over: Record<string, unknown> = {}): string =>
+    JSON.stringify({ sl: 1, kind: "effect", text: "Acme CI", effect: "pulse", ...over });
+  const frames = (over: Record<string, unknown> = {}): string =>
+    JSON.stringify({ sl: 1, kind: "frames", cols: 2, rows: 1, fps: 4, frames: ["AA", "BB"], ...over });
+
+  it("accepts a well-formed effect creative", () => {
+    const v = validateCampaign({ ...base, creative: effect() }, POLICY);
+    expect(v.ok).toBe(true);
+    expect(v.errors).toEqual([]);
+  });
+
+  it("accepts a well-formed frames creative", () => {
+    const v = validateCampaign({ ...base, creative: frames() }, POLICY);
+    expect(v.ok).toBe(true);
+    expect(v.errors).toEqual([]);
+  });
+
+  it("rejects an effect outside the allowlist", () => {
+    const v = validateCampaign({ ...base, creative: effect({ effect: "explode" }) }, POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/effect .*not allowed/i);
+  });
+
+  it("rejects effect text over the length cap", () => {
+    const v = validateCampaign({ ...base, creative: effect({ text: "x".repeat(200) }) }, POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/effect text exceeds/i);
+  });
+
+  it("rejects control characters in the inner effect text", () => {
+    const v = validateCampaign({ ...base, creative: effect({ text: "evil\u001b[2Jx" }) }, POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/control/i);
+  });
+
+  it("rejects a malformed fg triple", () => {
+    const v = validateCampaign({ ...base, creative: effect({ fg: [255, 0] }) }, POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/fg/i);
+  });
+
+  it("rejects an out-of-range loopMs", () => {
+    const v = validateCampaign({ ...base, creative: effect({ loopMs: -5 }) }, POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/loopMs/i);
+  });
+
+  it("rejects an fps above the cap", () => {
+    const v = validateCampaign({ ...base, creative: frames({ fps: 120 }) }, POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/fps/i);
+  });
+
+  it("rejects too many frames", () => {
+    const many = Array.from({ length: 300 }, () => "AA");
+    const v = validateCampaign({ ...base, creative: frames({ frames: many }) }, POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/frame.*cap/i);
+  });
+
+  it("rejects a frame wider than the declared grid", () => {
+    const v = validateCampaign({ ...base, creative: frames({ frames: ["AAAA", "BB"] }) }, POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/wider than .* cols/i);
+  });
+
+  it("rejects a frame with more rows than declared", () => {
+    const v = validateCampaign({ ...base, creative: frames({ rows: 1, frames: ["AA\nBB"] }) }, POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/more than .* rows/i);
+  });
+
+  it("rejects control characters inside a frame (but allows newlines)", () => {
+    const v = validateCampaign({ ...base, creative: frames({ rows: 2, frames: ["AA\u0007", "BB"] }) }, POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/control/i);
+  });
+
+  it("rejects a frames spec exceeding the animated byte cap", () => {
+    const big = Array.from({ length: 50 }, () => "A".repeat(20));
+    const v = validateCampaign({ ...base, creative: frames({ cols: 20, frames: big }) }, { ...POLICY, maxAnimatedChars: 100 });
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/animated creative exceeds/i);
+  });
+
+  it("rejects a malformed sl:1 spec instead of serving it as plain text", () => {
+    const v = validateCampaign({ ...base, creative: '{"sl":1,"kind":"frames","fps":0,"frames":["x"]}' }, POLICY);
+    expect(v.ok).toBe(false);
+    expect(v.errors.join(" ")).toMatch(/malformed animated spec/i);
+  });
+
+  it("still treats untagged JSON as plain text under the plain rules", () => {
+    const v = validateCampaign({ ...base, creative: '{"kind":"effect","text":"hi"}' }, POLICY);
+    expect(v.ok).toBe(true);
+  });
+});
+
 describe("campaignToBidder", () => {
   it("maps a campaign into the auction Bidder shape", () => {
     const b = campaignToBidder(base);
