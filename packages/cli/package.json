@@ -1,14 +1,31 @@
 {
   "name": "sponsorline",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
-  "bin": { "sponsorline": "./bin/sponsorline.mjs" },
+  "bin": {
+    "sponsorline": "./bin/sponsorline.mjs"
+  },
   "description": "The consent-first sponsor line for AI coding tools. The on-device client never sees your code; every impression is stranger-verifiable from a clean clone.",
-  "keywords": ["claude-code", "statusline", "cursor", "ai", "sponsor", "consent", "privacy", "verifiable"],
+  "keywords": [
+    "claude-code",
+    "statusline",
+    "cursor",
+    "ai",
+    "sponsor",
+    "consent",
+    "privacy",
+    "verifiable"
+  ],
   "homepage": "https://sponsorline.dev",
-  "publishConfig": { "access": "public" },
-  "files": ["dist", "bin", "LICENSE"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "LICENSE"
+  ],
   "exports": {
     "./dist/*": "./dist/*",
     "./store.js": "./dist/store.js",
@@ -19,5 +36,7 @@
     "build": "tsup src/main.ts src/store.ts src/cmd-earnings.ts src/cmd-verify.ts --format esm --dts --clean",
     "prepublishOnly": "npm run build"
   },
-  "dependencies": { "@effinai/sponsorline-core": "0.1.0" }
+  "dependencies": {
+    "@effinai/sponsorline-core": "0.2.0"
+  }
 }
