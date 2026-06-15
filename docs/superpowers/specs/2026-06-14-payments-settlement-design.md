@@ -134,11 +134,17 @@ no rewrite. Needs: funded-bid binding in auction/campaign (bid capped by escrow)
 settlement nonce already present as `receiptHash`, and on-chain reconciliation
 turning `reconcile()` into a real cross-check against settled amounts.
 
-## 6. Open questions
+## 6. Resolved decisions
 
-1. **Clearing window vs instant payout on the card rail.** Instant = best dev
-   experience, full chargeback risk + reserve required. 7–14 day window = devs
-   wait, platform only releases low-clawback money. Leaning toward a window.
+1. **Clearing window over instant payout on the card rail (decided).** A
+   developer's earned amount accrues immediately but is held as `pending` for a
+   14-day clearing window before it becomes payable. The platform only emits a
+   `payout` settlement entry (and moves money out) once the window on the
+   receipts backing that payout has elapsed, so we release only low-clawback
+   money. Rationale: card chargebacks can land weeks after the impression; paying
+   instantly would let a chargeback claw back money already sent to a developer,
+   which is the one failure that destroys developer trust. The cost (devs wait up
+   to ~2 weeks for first payout) is acceptable and clearly communicable.
 
 ## 7. Risks & mitigations
 
