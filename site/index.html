@@ -265,7 +265,13 @@
   .pv-ctrl input[type=range]{width:100%;accent-color:var(--seal);}
   .pv-toggle{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);font-weight:500;}
   .pv-toggle input[type=checkbox]{width:17px;height:17px;accent-color:var(--seal);}
+  .pv-panel-h.row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .pv-view{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;}
+  .pv-vbtn{font-family:var(--mono);font-size:11px;letter-spacing:.03em;text-transform:uppercase;padding:6px 11px;background:var(--paper);color:var(--ink-soft);border:0;cursor:pointer;}
+  .pv-vbtn.active{background:var(--seal);color:#fff;}
+  .pv-vbtn:not(.active):hover{color:var(--ink);}
   .pv-screen-wrap{padding:18px;}
+  video.pv-srcvid{width:100%;max-height:440px;border-radius:10px;background:#0a0c10;display:block;box-shadow:0 10px 40px oklch(0.2 0.02 55 / .18);}
   .pv-termbar{display:flex;align-items:center;gap:8px;padding:0 0 12px;}
   .pv-termbar .dot{width:11px;height:11px;border-radius:50%;}
   .pv-termbar .dot:nth-child(1){background:oklch(0.7 0.16 25);}
@@ -564,10 +570,13 @@ npx sponsorline verify">Copy</button>
       </div>
 
       <div class="pv-panel">
-        <div class="pv-panel-h">On-device render</div>
+        <div class="pv-panel-h row">On-device render
+          <span class="pv-view"><button type="button" class="pv-vbtn active" id="pv-viewSealed">Sealed render</button><button type="button" class="pv-vbtn" id="pv-viewSource">Your video</button></span>
+        </div>
         <div class="pv-screen-wrap">
-          <div class="pv-termbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="tt">developer terminal &middot; decoded from sealed bytes</span></div>
+          <div class="pv-termbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="tt" id="pv-tt">developer terminal &middot; decoded from sealed bytes</span></div>
           <pre id="pv-screen" class="empty">drop a clip to begin</pre>
+          <video id="pv-srcvid" class="pv-srcvid" playsinline muted loop controls style="display:none"></video>
         </div>
         <div class="pv-progress" id="pv-prog"><span id="pv-progbar"></span></div>
         <div class="pv-status" id="pv-status"></div>
@@ -833,10 +842,11 @@ npx sponsorline verify">Copy</button>
   var cvx=cv.getContext("2d",{willReadFrequently:true});
   function seekTo(t){ return new Promise(function(resolve){ var done=function(){ vid.removeEventListener("seeked",done); resolve(); }; vid.addEventListener("seeked",done); vid.currentTime=t; }); }
 
-  var spec=null, frameHtml=[], playIdx=0, timer=null, busy=false;
+  var spec=null, frameHtml=[], playIdx=0, timer=null, busy=false, curUrl=null;
   var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var el=function(id){return document.getElementById(id);};
   var screen=el("pv-screen"), statusEl=el("pv-status"), prog=el("pv-prog"), progbar=el("pv-progbar");
+  var srcvid=el("pv-srcvid");
   function setStatus(s){ statusEl.textContent=s||""; }
   function bindRange(id,vid2){ var r=el(id),v=el(vid2); var f=function(){v.textContent=r.value;}; r.addEventListener("input",f); f(); }
   bindRange("pv-cCols","pv-vCols"); bindRange("pv-cFps","pv-vFps"); bindRange("pv-cSecs","pv-vSecs"); bindRange("pv-cColors","pv-vColors");
@@ -853,13 +863,29 @@ npx sponsorline verify">Copy</button>
   el("pv-step").onclick=function(){ if(!spec) return; stopPlay(); tick(); };
   el("pv-cPixels").addEventListener("change",function(){ if(!spec) return; buildFrameHtml(); fitScreen(spec.cols); drawFrame(); });
 
+  function setView(v){
+    var src = v==="source";
+    el("pv-viewSealed").classList.toggle("active", !src);
+    el("pv-viewSource").classList.toggle("active", src);
+    screen.style.display = src ? "none" : "";
+    srcvid.style.display = src ? "block" : "none";
+    el("pv-tt").textContent = src ? "your clip \u00b7 source video, never uploaded" : "developer terminal \u00b7 decoded from sealed bytes";
+    if(src){ stopPlay(); if(srcvid.src){ var p=srcvid.play(); if(p&&p.catch) p.catch(function(){}); } }
+    else { try{ srcvid.pause(); }catch(e){} if(spec) startPlay(); }
+  }
+  el("pv-viewSealed").onclick=function(){ setView("sealed"); };
+  el("pv-viewSource").onclick=function(){ if(!curUrl) return; setView("source"); };
+
   function process(file){
     if(busy) return Promise.resolve();
     busy=true; stopPlay();
     el("pv-play").disabled=true; el("pv-step").disabled=true;
     setStatus("Loading clip into the browser (not uploaded)...");
     prog.classList.add("on"); progbar.style.width="0%";
+    setView("sealed");
+    if(curUrl){ URL.revokeObjectURL(curUrl); curUrl=null; }
     var url=URL.createObjectURL(file);
+    curUrl=url;
     vid.src=url;
     return new Promise(function(res,rej){ vid.onloadedmetadata=res; vid.onerror=function(){rej(new Error("Could not decode this file in the browser."));}; })
       .then(function(){
@@ -910,7 +936,7 @@ npx sponsorline verify">Copy</button>
           }
         });
       })
-      .then(function(){ URL.revokeObjectURL(url); busy=false; })
+      .then(function(){ busy=false; })
       .catch(function(e){ setStatus(e.message||String(e)); prog.classList.remove("on"); busy=false; });
   }
 
@@ -919,6 +945,7 @@ npx sponsorline verify">Copy</button>
                      : {sl:1,kind:"frames",cols:cols,rows:rows,fps:fps,frames:frames};
     var json=JSON.stringify(spec);
     buildFrameHtml();
+    if(curUrl) srcvid.src=curUrl;
     el("pv-fUp").textContent="0 bytes";
     el("pv-fPal").innerHTML = withColor ? (palette.length+" <small>colors</small>") : "<small>grayscale</small>";
     el("pv-fFrames").textContent=String(frames.length);
